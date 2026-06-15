@@ -1,4 +1,5 @@
 *.iml
+.gradle/
 .gradle
 /local.properties
 /.idea/caches
@@ -9,6 +10,8 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+*/build/
+app/build/
 captures
 .externalNativeBuild
 .cxx
