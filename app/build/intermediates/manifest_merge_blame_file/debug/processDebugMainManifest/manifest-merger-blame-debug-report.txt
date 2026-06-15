@@ -1,0 +1,254 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.pathmemo"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <!-- Location -->
+12    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+12-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:6:5-79
+12-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:6:22-76
+13    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+13-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:7:5-81
+13-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:7:22-78
+14    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+14-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:8:5-85
+14-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:8:22-82
+15    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+15-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:9:5-89
+15-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:9:22-86
+16
+17    <!-- Network -->
+18    <uses-permission android:name="android.permission.INTERNET" />
+18-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:12:5-67
+18-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:12:22-64
+19    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+19-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:13:5-79
+19-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:13:22-76
+20    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+20-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:14:5-76
+20-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:14:22-73
+21
+22    <!-- Foreground service -->
+23    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+23-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:17:5-77
+23-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:17:22-74
+24    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+24-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:18:5-86
+24-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:18:22-83
+25    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+25-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:19:5-77
+25-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:19:22-74
+26
+27    <!-- Auto start on boot -->
+28    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+28-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:22:5-81
+28-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:22:22-78
+29
+30    <!-- Hardware -->
+31    <uses-feature
+31-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:25:5-27:36
+32        android:name="android.hardware.location"
+32-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:26:9-49
+33        android:required="false" />
+33-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:27:9-33
+34    <uses-feature
+34-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:28:5-30:36
+35        android:name="android.hardware.location.gps"
+35-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:29:9-53
+36        android:required="false" />
+36-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:30:9-33
+37
+38    <permission
+38-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+39        android:name="com.pathmemo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+39-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+40        android:protectionLevel="signature" />
+40-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+41
+42    <uses-permission android:name="com.pathmemo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+42-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+42-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+43
+44    <application
+44-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:32:5-79:19
+45        android:name="com.pathmemo.PathMemoApp"
+45-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:33:9-36
+46        android:allowBackup="true"
+46-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:34:9-35
+47        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+47-->[androidx.core:core:1.13.1] C:\Users\xdshe\.gradle\caches\transforms-3\785a7f7b17a75ecdb5a373e28f755b5d\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+48        android:dataExtractionRules="@xml/data_extraction_rules"
+48-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:35:9-65
+49        android:debuggable="true"
+50        android:extractNativeLibs="false"
+51        android:fullBackupContent="@xml/backup_rules"
+51-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:36:9-54
+52        android:icon="@mipmap/ic_launcher"
+52-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:37:9-43
+53        android:label="@string/app_name"
+53-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:38:9-41
+54        android:roundIcon="@mipmap/ic_launcher_round"
+54-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:39:9-54
+55        android:supportsRtl="true"
+55-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:40:9-35
+56        android:theme="@style/Theme.PathMemo" >
+56-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:41:9-46
+57
+58        <!-- AMap API Key -->
+59        <meta-data
+60            android:name="com.amap.api.v2.apikey"
+60-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:46:13-50
+61            android:value="41e658b4e970b329e77668bf3958a296" />
+61-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:47:13-44
+62
+63        <!-- AMap location service -->
+64        <service android:name="com.amap.api.location.APSService" />
+64-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:50:9-68
+64-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:50:18-65
+65
+66        <!-- Our foreground location recording service -->
+67        <service
+67-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:53:9-57:56
+68            android:name="com.pathmemo.service.LocationRecordService"
+68-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:54:13-58
+69            android:enabled="true"
+69-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:55:13-35
+70            android:exported="false"
+70-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:56:13-37
+71            android:foregroundServiceType="location" />
+71-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:57:13-53
+72
+73        <!-- Boot receiver for auto-start -->
+74        <receiver
+74-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:60:9-67:20
+75            android:name="com.pathmemo.service.BootReceiver"
+75-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:61:13-49
+76            android:enabled="true"
+76-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:62:13-35
+77            android:exported="true" >
+77-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:63:13-36
+78            <intent-filter>
+78-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:64:13-66:29
+79                <action android:name="android.intent.action.BOOT_COMPLETED" />
+79-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:65:17-79
+79-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:65:25-76
+80            </intent-filter>
+81        </receiver>
+82
+83        <activity
+83-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:69:9-78:20
+84            android:name="com.pathmemo.ui.MainActivity"
+84-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:70:13-44
+85            android:exported="true"
+85-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:71:13-36
+86            android:launchMode="singleTask"
+86-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:72:13-44
+87            android:theme="@style/Theme.PathMemo" >
+87-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:73:13-50
+88            <intent-filter>
+88-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:74:13-77:29
+89                <action android:name="android.intent.action.MAIN" />
+89-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:75:17-69
+89-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:75:25-66
+90
+91                <category android:name="android.intent.category.LAUNCHER" />
+91-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:76:17-77
+91-->D:\Documents\Study\03.Creative\PathMemo\app\src\main\AndroidManifest.xml:76:27-74
+92            </intent-filter>
+93        </activity>
+94        <activity
+94-->[androidx.compose.ui:ui-test-manifest:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\fb254a6d0ab8690f7969177b7f1131cb\transformed\ui-test-manifest-1.7.2\AndroidManifest.xml:23:9-25:39
+95            android:name="androidx.activity.ComponentActivity"
+95-->[androidx.compose.ui:ui-test-manifest:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\fb254a6d0ab8690f7969177b7f1131cb\transformed\ui-test-manifest-1.7.2\AndroidManifest.xml:24:13-63
+96            android:exported="true" />
+96-->[androidx.compose.ui:ui-test-manifest:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\fb254a6d0ab8690f7969177b7f1131cb\transformed\ui-test-manifest-1.7.2\AndroidManifest.xml:25:13-36
+97
+98        <provider
+98-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+99            android:name="androidx.startup.InitializationProvider"
+99-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+100            android:authorities="com.pathmemo.androidx-startup"
+100-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+101            android:exported="false" >
+101-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+102            <meta-data
+102-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+103                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+103-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+104                android:value="androidx.startup" />
+104-->[androidx.emoji2:emoji2:1.3.0] C:\Users\xdshe\.gradle\caches\transforms-3\c063b99db4306e3fe114703df2d1241a\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+105            <meta-data
+105-->[androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\xdshe\.gradle\caches\transforms-3\faa730baf26186c04bb7351207c5090b\transformed\lifecycle-process-2.8.6\AndroidManifest.xml:29:13-31:52
+106                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+106-->[androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\xdshe\.gradle\caches\transforms-3\faa730baf26186c04bb7351207c5090b\transformed\lifecycle-process-2.8.6\AndroidManifest.xml:30:17-78
+107                android:value="androidx.startup" />
+107-->[androidx.lifecycle:lifecycle-process:2.8.6] C:\Users\xdshe\.gradle\caches\transforms-3\faa730baf26186c04bb7351207c5090b\transformed\lifecycle-process-2.8.6\AndroidManifest.xml:31:17-49
+108            <meta-data
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+109                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+109-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+110                android:value="androidx.startup" />
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+111        </provider>
+112
+113        <activity
+113-->[androidx.compose.ui:ui-tooling-android:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\0b6bf63f9b81e8f64247165dbeeff287\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+114            android:name="androidx.compose.ui.tooling.PreviewActivity"
+114-->[androidx.compose.ui:ui-tooling-android:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\0b6bf63f9b81e8f64247165dbeeff287\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+115            android:exported="true" />
+115-->[androidx.compose.ui:ui-tooling-android:1.7.2] C:\Users\xdshe\.gradle\caches\transforms-3\0b6bf63f9b81e8f64247165dbeeff287\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+116
+117        <service
+117-->[androidx.room:room-runtime:2.6.1] C:\Users\xdshe\.gradle\caches\transforms-3\214ee5f92a2d0ac0fc6c66c208ef83bc\transformed\room-runtime-2.6.1\AndroidManifest.xml:24:9-28:63
+118            android:name="androidx.room.MultiInstanceInvalidationService"
+118-->[androidx.room:room-runtime:2.6.1] C:\Users\xdshe\.gradle\caches\transforms-3\214ee5f92a2d0ac0fc6c66c208ef83bc\transformed\room-runtime-2.6.1\AndroidManifest.xml:25:13-74
+119            android:directBootAware="true"
+119-->[androidx.room:room-runtime:2.6.1] C:\Users\xdshe\.gradle\caches\transforms-3\214ee5f92a2d0ac0fc6c66c208ef83bc\transformed\room-runtime-2.6.1\AndroidManifest.xml:26:13-43
+120            android:exported="false" />
+120-->[androidx.room:room-runtime:2.6.1] C:\Users\xdshe\.gradle\caches\transforms-3\214ee5f92a2d0ac0fc6c66c208ef83bc\transformed\room-runtime-2.6.1\AndroidManifest.xml:27:13-37
+121
+122        <receiver
+122-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+123            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+123-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+124            android:directBootAware="false"
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+125            android:enabled="true"
+125-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+126            android:exported="true"
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+127            android:permission="android.permission.DUMP" >
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+128            <intent-filter>
+128-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+129                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+130            </intent-filter>
+131            <intent-filter>
+131-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+132                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+133            </intent-filter>
+134            <intent-filter>
+134-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+135                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+136            </intent-filter>
+137            <intent-filter>
+137-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+138                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\xdshe\.gradle\caches\transforms-3\4ca34b0f55bf93c011d997dff15ced5b\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+139            </intent-filter>
+140        </receiver>
+141    </application>
+142
+143</manifest>

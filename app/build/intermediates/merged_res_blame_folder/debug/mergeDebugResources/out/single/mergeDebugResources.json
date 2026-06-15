@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.pathmemo.app-debug-68:/xml_backup_rules.xml.flat",
+        "source": "com.pathmemo.app-main-70:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.pathmemo.app-debug-68:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.pathmemo.app-main-70:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.pathmemo.app-debug-68:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.pathmemo.app-main-70:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.pathmemo.app-debug-68:/xml_data_extraction_rules.xml.flat",
+        "source": "com.pathmemo.app-main-70:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.pathmemo.app-debug-68:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pathmemo.app-main-70:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.pathmemo.app-debug-68:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pathmemo.app-main-70:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    }
+]

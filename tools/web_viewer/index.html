@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PathMemo Web Viewer</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 360px;
+            background: #fff;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        .panel {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .date-inputs input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #2196F3;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn:hover { background: #1976D2; }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover { background: #d0d0d0; }
+        .calendar {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            overflow-y: auto;
+            max-height: 260px;
+        }
+        .month {
+            margin-bottom: 16px;
+        }
+        .month-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .weekdays, .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+        .weekdays div {
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            padding: 4px 0;
+        }
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            background: #ebedf0;
+            color: #333;
+            position: relative;
+        }
+        .day:hover { outline: 2px solid #2196F3; }
+        .day.empty { background: transparent; cursor: default; }
+        .day.empty:hover { outline: none; }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .track-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .track-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border-left: 3px solid #2196F3;
+        }
+        .track-item:hover { background: #e3f2fd; }
+        .track-name { font-weight: 600; font-size: 13px; }
+        .track-meta { font-size: 12px; color: #666; margin-top: 3px; }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        #map { flex: 1; background: #f0f0f0; }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 24px 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            text-align: center;
+            z-index: 1000;
+        }
+        .info-popup {
+            font-size: 13px;
+            line-height: 1.5;
+            min-width: 180px;
+        }
+        .info-popup .time { font-weight: 600; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="header">
+                <h1>PathMemo Web Viewer</h1>
+                <div class="stats">
+                    <span id="stat-tracks">0 条轨迹</span>
+                    <span id="stat-points">0 个点</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">日期范围</div>
+                <div class="date-inputs">
+                    <input type="date" id="start-date">
+                    <span>~</span>
+                    <input type="date" id="end-date">
+                </div>
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="btn" onclick="applyRange()">查看</button>
+                    <button class="btn btn-secondary" onclick="resetRange()">重置</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">时间段图例</div>
+                <div class="legend" id="legend"></div>
+            </div>
+
+            <div class="calendar" id="calendar"></div>
+
+            <div class="track-list" id="track-list"></div>
+        </aside>
+
+        <main class="main">
+            <div id="map"></div>
+            <div class="loading" id="loading">
+                <div>正在加载轨迹数据...</div>
+                <div style="font-size: 12px; color: #666; margin-top: 8px;">请确保手机已通过 ADB 连接</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Time buckets matching the mobile app (GCJ-02 coordinates drawn on AMap).
+        const TIME_BUCKETS = [
+            { start: 0, end: 6, color: '#9C27B0', label: '凌晨 00-06' },
+            { start: 6, end: 12, color: '#4CAF50', label: '上午 06-12' },
+            { start: 12, end: 18, color: '#FF9800', label: '下午 12-18' },
+            { start: 18, end: 24, color: '#F44336', label: '晚上 18-24' }
+        ];
+
+        let map = null;
+        let markers = [];
+        let infoWindow = null;
+        let allData = { tracks: [], points: [] };
+        let selectedPoint = null;
+        let amapKey = '';
+
+        function getBucket(timestamp) {
+            const date = new Date(timestamp);
+            const hour = date.getHours();
+            return TIME_BUCKETS.find(b => hour >= b.start && hour < b.end) || TIME_BUCKETS[TIME_BUCKETS.length - 1];
+        }
+
+        function formatDateTime(timestamp) {
+            const d = new Date(timestamp);
+            const pad = n => n.toString().padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+
+        function formatDuration(ms) {
+            const s = Math.floor(ms / 1000);
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            if (h > 0) return `${h}小时${m.toString().padStart(2,'0')}分`;
+            return `${m}分${(s % 60).toString().padStart(2,'0')}秒`;
+        }
+
+        function formatDistance(m) {
+            if (m >= 1000) return (m / 1000).toFixed(2) + ' km';
+            return Math.round(m) + ' m';
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+
+        async function initMap() {
+            if (!amapKey) {
+                throw new Error('AMap key not configured');
+            }
+            await loadScript(`https://webapi.amap.com/maps?v=1.4.15&key=${amapKey}`);
+            map = new AMap.Map('map', {
+                zoom: 13,
+                center: [116.397428, 39.90923]
+            });
+            infoWindow = new AMap.InfoWindow({
+                offset: new AMap.Pixel(0, -8),
+                autoMove: true
+            });
+        }
+
+        function renderLegend() {
+            const el = document.getElementById('legend');
+            el.innerHTML = TIME_BUCKETS.map(b => `
+                <div class="legend-item">
+                    <div class="legend-color" style="background:${b.color}"></div>
+                    <span>${b.label}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderCalendar() {
+            const el = document.getElementById('calendar');
+            const daily = {};
+            allData.tracks.forEach(t => {
+                const d = new Date(t.startTime);
+                const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                const day = d.getDate();
+                if (!daily[key]) daily[key] = {};
+                if (!daily[key][day]) daily[key][day] = { count: 0, duration: 0 };
+                daily[key][day].count++;
+                daily[key][day].duration += (t.endTime || Date.now()) - t.startTime;
+            });
+
+            const months = Object.keys(daily).sort().reverse();
+            el.innerHTML = months.map(monthKey => {
+                const [year, month] = monthKey.split('-').map(Number);
+                const firstDay = new Date(year, month - 1, 1).getDay();
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const dayCells = [];
+                for (let i = 0; i < firstDay; i++) dayCells.push('<div class="day empty"></div>');
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const info = daily[monthKey][d];
+                    let style = 'background:#ebedf0';
+                    if (info) {
+                        const intensity = Math.min(1, info.duration / (3 * 3600 * 1000));
+                        const alpha = 0.2 + intensity * 0.8;
+                        style = `background:rgba(33,150,243,${alpha})`;
+                    }
+                    const dateStr = `${year}-${month.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                    dayCells.push(`<div class="day" style="${style}" onclick="selectDay('${dateStr}')">${d}</div>`);
+                }
+                return `
+                    <div class="month">
+                        <div class="month-name">${year}年${month}月</div>
+                        <div class="weekdays">
+                            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+                        </div>
+                        <div class="days">${dayCells.join('')}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTrackList(tracks) {
+            const el = document.getElementById('track-list');
+            if (tracks.length === 0) {
+                el.innerHTML = '<div style="color:#999;text-align:center;margin-top:20px">没有轨迹</div>';
+                return;
+            }
+            el.innerHTML = tracks.slice().reverse().map(t => {
+                const duration = (t.endTime || Date.now()) - t.startTime;
+                return `
+                    <div class="track-item" onclick="focusTrack(${t.id})">
+                        <div class="track-name">${escapeHtml(t.name)}</div>
+                        <div class="track-meta">${formatDateTime(t.startTime)} · ${formatDistance(t.distanceMeters)} · ${formatDuration(duration)} · ${t.pointCount}点</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(s) {
+            return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+        }
+
+        function renderMap(points) {
+            if (!map) return;
+            map.remove(markers);
+            markers = [];
+
+            if (points.length === 0) {
+                infoWindow && infoWindow.close();
+                return;
+            }
+
+            const bounds = new AMap.Bounds();
+            points.forEach(p => {
+                const bucket = getBucket(p.timestamp);
+                const isSelected = selectedPoint && selectedPoint.id === p.id;
+                const marker = new AMap.CircleMarker({
+                    center: [p.longitude, p.latitude],
+                    radius: isSelected ? 12 : 7,
+                    fillColor: bucket.color,
+                    strokeColor: isSelected ? '#000' : bucket.color,
+                    fillOpacity: 0.9,
+                    strokeOpacity: 1,
+                    strokeWeight: isSelected ? 2 : 1,
+                    extData: p
+                });
+                marker.on('click', () => {
+                    selectedPoint = p;
+                    infoWindow.setContent(`
+                        <div class="info-popup">
+                            <div class="time">${formatDateTime(p.timestamp)}</div>
+                            <div>纬度: ${p.latitude.toFixed(6)}</div>
+                            <div>经度: ${p.longitude.toFixed(6)}</div>
+                            <div>海拔: ${p.altitude.toFixed(1)} m</div>
+                            <div>精度: ${p.accuracy.toFixed(1)} m</div>
+                        </div>
+                    `);
+                    infoWindow.open(map, [p.longitude, p.latitude]);
+                    renderMap(points);
+                });
+                markers.push(marker);
+                bounds.extend([p.longitude, p.latitude]);
+            });
+
+            map.add(markers);
+            if (!selectedPoint) {
+                map.setBounds(bounds);
+            }
+        }
+
+        function update(startDate, endDate) {
+            const startTime = new Date(startDate + 'T00:00:00').getTime();
+            const endTime = new Date(endDate + 'T23:59:59.999').getTime();
+
+            const filteredTracks = allData.tracks.filter(t => t.startTime >= startTime && t.startTime <= endTime);
+            const trackIds = new Set(filteredTracks.map(t => t.id));
+            const filteredPoints = allData.points.filter(p => trackIds.has(p.trackId));
+
+            document.getElementById('stat-tracks').textContent = filteredTracks.length + ' 条轨迹';
+            document.getElementById('stat-points').textContent = filteredPoints.length + ' 个点';
+
+            renderTrackList(filteredTracks);
+            renderMap(filteredPoints);
+        }
+
+        function applyRange() {
+            update(document.getElementById('start-date').value, document.getElementById('end-date').value);
+        }
+
+        function resetRange() {
+            const dates = allData.tracks.map(t => t.startTime);
+            if (dates.length === 0) return;
+            const min = new Date(Math.min(...dates));
+            const max = new Date(Math.max(...dates));
+            document.getElementById('start-date').value = formatDateInput(min);
+            document.getElementById('end-date').value = formatDateInput(max);
+            selectedPoint = null;
+            infoWindow && infoWindow.close();
+            applyRange();
+        }
+
+        function selectDay(dateStr) {
+            document.getElementById('start-date').value = dateStr;
+            document.getElementById('end-date').value = dateStr;
+            selectedPoint = null;
+            infoWindow && infoWindow.close();
+            applyRange();
+        }
+
+        function focusTrack(trackId) {
+            const track = allData.tracks.find(t => t.id === trackId);
+            if (!track) return;
+            const trackPoints = allData.points.filter(p => p.trackId === trackId);
+            if (trackPoints.length === 0) return;
+            const dates = trackPoints.map(p => new Date(p.timestamp));
+            const min = new Date(Math.min(...dates));
+            const max = new Date(Math.max(...dates));
+            document.getElementById('start-date').value = formatDateInput(min);
+            document.getElementById('end-date').value = formatDateInput(max);
+            selectedPoint = null;
+            infoWindow && infoWindow.close();
+            applyRange();
+        }
+
+        function formatDateInput(d) {
+            return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+        }
+
+        async function loadData() {
+            try {
+                const [configRes, dataRes] = await Promise.all([
+                    fetch('/api/config.json'),
+                    fetch('/api/data.json')
+                ]);
+                if (!configRes.ok) throw new Error('HTTP ' + configRes.status);
+                if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
+
+                const config = await configRes.json();
+                amapKey = config.amapKey || '';
+                if (!amapKey) {
+                    throw new Error('AMAP_API_KEY 未配置，请在项目 local.properties 中填写后重试。');
+                }
+                await initMap();
+
+                allData = await dataRes.json();
+                document.getElementById('loading').style.display = 'none';
+                renderLegend();
+                renderCalendar();
+                resetRange();
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `
+                    <div>加载失败</div>
+                    <div style="font-size:12px;color:#666;margin-top:8px">${escapeHtml(e.message)}</div>
+                    <div style="margin-top:12px"><button class="btn" onclick="location.reload()">重试</button></div>
+                `;
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
