@@ -61,7 +61,7 @@ app/src/main/java/com/pathmemo/
 
 ## 运行前配置
 
-1. 前往 [高德开放平台](https://lbs.amacon.com) 注册并创建应用，获取 **Key**。
+1. 前往 [高德开放平台](https://lbs.amap.com) 注册并创建应用，获取 **Key**。
 2. 打开项目根目录 `local.properties`，将 `AMAP_API_KEY=YOUR_AMAP_API_KEY` 替换为实际 Key。
 3. 使用 Android Studio 或 `./gradlew assembleDebug` 构建安装包。
 
@@ -71,8 +71,9 @@ APP 需要以下权限：
 
 - `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION`：基础定位
 - `ACCESS_BACKGROUND_LOCATION`：后台持续记录
-- `FOREGROUND_SERVICE_LOCATION`：前台服务
+- `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_LOCATION`：前台服务
 - `POST_NOTIFICATIONS`：记录通知（Android 13+）
+- `RECEIVE_BOOT_COMPLETED`：开机自动恢复记录
 
 ## 电脑端查看工具
 
