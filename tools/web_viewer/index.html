@@ -197,9 +197,10 @@
                     <span>~</span>
                     <input type="date" id="end-date">
                 </div>
-                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                     <button class="btn" onclick="applyRange()">查看</button>
                     <button class="btn btn-secondary" onclick="resetRange()">重置</button>
+                    <button class="btn btn-secondary" onclick="loadAllPoints()">加载全部</button>
                 </div>
             </div>
 
@@ -234,7 +235,8 @@
         let map = null;
         let markers = [];
         let infoWindow = null;
-        let allData = { tracks: [], points: [] };
+        let allData = { tracks: [], daily: {}, meta: {} };
+        let currentPoints = [];
         let selectedPoint = null;
         let amapKey = '';
 
@@ -300,15 +302,7 @@
 
         function renderCalendar() {
             const el = document.getElementById('calendar');
-            const daily = {};
-            allData.points.forEach(p => {
-                const d = new Date(p.timestamp);
-                const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
-                const day = d.getDate();
-                if (!daily[key]) daily[key] = {};
-                if (!daily[key][day]) daily[key][day] = { count: 0, duration: 0 };
-                daily[key][day].count++;
-            });
+            const daily = allData.daily || {};
 
             const months = Object.keys(daily).sort().reverse();
             el.innerHTML = months.map(monthKey => {
@@ -347,17 +341,30 @@
                 return;
             }
             el.innerHTML = dates.map(dateStr => {
-                const startTime = new Date(dateStr + 'T00:00:00').getTime();
-                const endTime = new Date(dateStr + 'T23:59:59.999').getTime();
-                const dayPoints = allData.points.filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
-                const duration = dayPoints.length > 0 ? dayPoints[dayPoints.length - 1].timestamp - dayPoints[0].timestamp : 0;
+                const info = getDayInfo(dateStr);
+                const duration = info ? info.duration : 0;
                 return `
                     <div class="track-item" onclick="selectDay('${dateStr}')">
                         <div class="track-name">${dateStr}</div>
-                        <div class="track-meta">${dayPoints.length} 个点 · ${formatDistance(computeTotalDistance(dayPoints))} · ${formatDuration(duration)}</div>
+                        <div class="track-meta">${info ? info.count : 0} 个点 · ${formatDistance(computeTotalDistanceForDate(dateStr))} · ${formatDuration(duration)}</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function getDayInfo(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
+            const day = d.getDate();
+            const month = allData.daily[key];
+            return month ? month[day] : null;
+        }
+
+        function computeTotalDistanceForDate(dateStr) {
+            const startTime = new Date(dateStr + 'T00:00:00').getTime();
+            const endTime = new Date(dateStr + 'T23:59:59.999').getTime();
+            const dayPoints = currentPoints.filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
+            return computeTotalDistance(dayPoints);
         }
 
         function escapeHtml(s) {
@@ -374,8 +381,20 @@
                 return;
             }
 
+            // Sample points if too many to keep map responsive
+            const MAX_POINTS = 5000;
+            let displayPoints = points;
+            if (points.length > MAX_POINTS) {
+                const step = Math.ceil(points.length / MAX_POINTS);
+                displayPoints = [];
+                for (let i = 0; i < points.length; i += step) {
+                    displayPoints.push(points[i]);
+                }
+                console.log(`Sampling: ${points.length} -> ${displayPoints.length} points`);
+            }
+
             const bounds = new AMap.Bounds();
-            points.forEach(p => {
+            displayPoints.forEach(p => {
                 const bucket = getBucket(p.timestamp);
                 const isSelected = selectedPoint && selectedPoint.id === p.id;
                 const marker = new AMap.CircleMarker({
@@ -412,16 +431,27 @@
             }
         }
 
-        function update(startDate, endDate) {
+        async function update(startDate, endDate) {
             const startTime = new Date(startDate + 'T00:00:00').getTime();
             const endTime = new Date(endDate + 'T23:59:59.999').getTime();
 
-            const filteredPoints = allData.points.filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
-            const involvedTrackIds = new Set(filteredPoints.map(p => p.trackId));
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading').innerHTML = '<div>正在加载轨迹点...</div>';
+
+            try {
+                currentPoints = await loadPointsRange(startTime, endTime);
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `<div>加载失败: ${escapeHtml(e.message)}</div>`;
+                return;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            const involvedTrackIds = new Set(currentPoints.map(p => p.trackId));
             const filteredTracks = allData.tracks.filter(t => involvedTrackIds.has(t.id));
 
             document.getElementById('stat-tracks').textContent = filteredTracks.length + ' 条记录段';
-            document.getElementById('stat-points').textContent = filteredPoints.length + ' 个点';
+            document.getElementById('stat-points').textContent = currentPoints.length + ' 个点';
 
             const dates = [];
             let current = new Date(startTime);
@@ -430,31 +460,53 @@
                 current.setDate(current.getDate() + 1);
             }
             renderDateList(dates);
-            renderMap(filteredPoints);
+            renderMap(currentPoints);
         }
 
-        function applyRange() {
-            update(document.getElementById('start-date').value, document.getElementById('end-date').value);
+        async function loadPointsRange(start, end) {
+            const res = await fetch(`/api/points.json?start=${start}&end=${end}`);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            return data.points || [];
+        }
+
+        async function loadAllPoints() {
+            if (!allData.meta.minTimestamp || !allData.meta.maxTimestamp) return;
+            const startInput = document.getElementById('start-date');
+            const endInput = document.getElementById('end-date');
+            startInput.value = formatDateInput(new Date(allData.meta.minTimestamp));
+            endInput.value = formatDateInput(new Date(allData.meta.maxTimestamp));
+            await applyRange();
+        }
+
+        async function applyRange() {
+            await update(document.getElementById('start-date').value, document.getElementById('end-date').value);
         }
 
         function resetRange() {
-            const dates = allData.points.map(p => p.timestamp);
-            if (dates.length === 0) return;
-            const min = new Date(Math.min(...dates));
-            const max = new Date(Math.max(...dates));
-            document.getElementById('start-date').value = formatDateInput(min);
-            document.getElementById('end-date').value = formatDateInput(max);
+            const min = allData.meta.minTimestamp;
+            const max = allData.meta.maxTimestamp;
+            if (!min || !max) return;
+
+            // Default to last 7 days or all data if less than 7 days
+            const maxDate = new Date(max);
+            const minDate = new Date(min);
+            const sevenDaysAgo = new Date(maxDate.getTime() - 6 * 24 * 60 * 60 * 1000);
+            const startDate = sevenDaysAgo < minDate ? minDate : sevenDaysAgo;
+
+            document.getElementById('start-date').value = formatDateInput(startDate);
+            document.getElementById('end-date').value = formatDateInput(maxDate);
             selectedPoint = null;
             infoWindow && infoWindow.close();
             applyRange();
         }
 
-        function selectDay(dateStr) {
+        async function selectDay(dateStr) {
             document.getElementById('start-date').value = dateStr;
             document.getElementById('end-date').value = dateStr;
             selectedPoint = null;
             infoWindow && infoWindow.close();
-            applyRange();
+            await applyRange();
         }
 
         function computeTotalDistance(points) {
@@ -481,12 +533,14 @@
 
         async function loadData() {
             try {
-                const [configRes, dataRes] = await Promise.all([
+                const [configRes, tracksRes, dailyRes] = await Promise.all([
                     fetch('/api/config.json'),
-                    fetch('/api/data.json')
+                    fetch('/api/data.json'),
+                    fetch('/api/daily.json')
                 ]);
                 if (!configRes.ok) throw new Error('HTTP ' + configRes.status);
-                if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
+                if (!tracksRes.ok) throw new Error('HTTP ' + tracksRes.status);
+                if (!dailyRes.ok) throw new Error('HTTP ' + dailyRes.status);
 
                 const config = await configRes.json();
                 amapKey = config.amapKey || '';
@@ -495,8 +549,29 @@
                 }
                 await initMap();
 
-                allData = await dataRes.json();
-                document.getElementById('loading').style.display = 'none';
+                const tracksData = await tracksRes.json();
+                const dailyData = await dailyRes.json();
+
+                let minTimestamp = null;
+                let maxTimestamp = null;
+                Object.values(dailyData).forEach(month => {
+                    Object.values(month).forEach(day => {
+                        if (minTimestamp === null || day.first < minTimestamp) minTimestamp = day.first;
+                        if (maxTimestamp === null || day.last > maxTimestamp) maxTimestamp = day.last;
+                    });
+                });
+
+                allData = {
+                    tracks: tracksData.tracks || [],
+                    daily: dailyData,
+                    meta: {
+                        trackCount: tracksData.trackCount || 0,
+                        pointCount: tracksData.pointCount || 0,
+                        minTimestamp: minTimestamp,
+                        maxTimestamp: maxTimestamp
+                    }
+                };
+
                 renderLegend();
                 renderCalendar();
                 resetRange();
