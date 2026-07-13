@@ -12,6 +12,7 @@ import com.pathmemo.ui.home.HomeScreen
 import com.pathmemo.ui.overview.OverviewScreen
 import com.pathmemo.ui.preview.DayPreviewScreen
 import com.pathmemo.ui.range.RangePreviewScreen
+import com.pathmemo.ui.settings.BackgroundHelpScreen
 import com.pathmemo.ui.settings.SettingsScreen
 
 @Composable
@@ -81,7 +82,13 @@ fun PathMemoNavHost(
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToBackgroundHelp = { navController.navigate(Screen.BackgroundHelp.route) }
+            )
+        }
+        composable(Screen.BackgroundHelp.route) {
+            BackgroundHelpScreen(onBack = { navController.popBackStack() })
         }
     }
 }

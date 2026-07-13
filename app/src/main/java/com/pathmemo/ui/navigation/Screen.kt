@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
         fun createRoute(startMillis: Long, endMillis: Long) = "range_preview/$startMillis/$endMillis"
     }
     data object Settings : Screen("settings")
+    data object BackgroundHelp : Screen("background_help")
     data object TrackDetail : Screen("track_detail/{trackId}") {
         fun createRoute(trackId: Long) = "track_detail/$trackId"
     }

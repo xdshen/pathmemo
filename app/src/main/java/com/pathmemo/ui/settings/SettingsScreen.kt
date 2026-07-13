@@ -52,6 +52,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToBackgroundHelp: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
@@ -125,6 +126,11 @@ fun SettingsScreen(
                     title = "电池优化白名单",
                     summary = "允许 PathMemo 在后台持续记录轨迹",
                     onClick = { viewModel.openBatteryOptimizationSettings() }
+                )
+                SettingsItem(
+                    title = "后台持续运行设置",
+                    summary = "如何避免被系统清理，保持轨迹记录不中断",
+                    onClick = onNavigateToBackgroundHelp
                 )
             }
 
