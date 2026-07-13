@@ -2,6 +2,7 @@ package com.pathmemo.di
 
 import android.app.Application
 import androidx.room.Room
+import com.pathmemo.data.db.MIGRATION_1_2
 import com.pathmemo.data.db.PathMemoDatabase
 import com.pathmemo.data.repository.TrackRepository
 import com.pathmemo.data.store.SettingsDataStore
@@ -24,7 +25,8 @@ val appModule = module {
             androidContext(),
             PathMemoDatabase::class.java,
             "pathmemo_database"
-        ).build()
+        ).addMigrations(MIGRATION_1_2)
+            .build()
     }
     single { get<PathMemoDatabase>().trackDao() }
     single { get<PathMemoDatabase>().locationPointDao() }

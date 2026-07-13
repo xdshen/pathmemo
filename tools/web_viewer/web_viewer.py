@@ -145,6 +145,38 @@ def query_points(db_path, start, end):
     return points
 
 
+def query_daily_summary_remote():
+    """Return daily summary by querying the phone directly."""
+    sql = """
+        SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') AS date,
+               COUNT(*) AS count,
+               MIN(timestamp) AS first,
+               MAX(timestamp) AS last,
+               MAX(timestamp)-MIN(timestamp) AS duration
+        FROM location_points
+        GROUP BY date
+        ORDER BY date ASC
+    """
+    output = run_sql_on_device(sql)
+    if not output:
+        return {}
+    rows = json.loads(output)
+    daily = {}
+    for row in rows:
+        date = row["date"]
+        year, month, day = date.split("-")
+        key = f"{year}-{month}"
+        if key not in daily:
+            daily[key] = {}
+        daily[key][int(day)] = {
+            "count": row["count"],
+            "first": row["first"],
+            "last": row["last"],
+            "duration": row["duration"],
+        }
+    return daily
+
+
 def query_daily_summary(db_path):
     """Return daily point counts and time ranges for the calendar heatmap."""
     conn = sqlite3.connect(db_path)
@@ -193,6 +225,46 @@ def query_all_tracks(db_path):
     tracks = [dict(row) for row in cur.fetchall()]
     conn.close()
     return tracks
+
+
+def run_sql_on_device(sql):
+    """Execute SQL directly on the phone's SQLite database and return JSON output."""
+    adb = shutil.which("adb")
+    if adb is None:
+        raise RuntimeError("adb not found in PATH. Please install Android SDK platform-tools.")
+
+    input_text = f".mode json\n{sql}"
+    result = subprocess.run(
+        [adb, "shell", "run-as com.pathmemo sqlite3 databases/pathmemo_database"],
+        input=input_text,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Device SQL failed: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def query_area_summary_remote(min_lng, max_lng, min_lat, max_lat):
+    """Return dates with points inside the rectangle by querying the phone directly."""
+    sql = """
+        SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') AS date,
+               COUNT(*) AS count,
+               MIN(timestamp) AS first,
+               MAX(timestamp) AS last,
+               MAX(timestamp)-MIN(timestamp) AS duration
+        FROM location_points
+        WHERE longitude >= {} AND longitude <= {} AND latitude >= {} AND latitude <= {}
+        GROUP BY date
+        ORDER BY date DESC
+    """.format(min_lng, max_lng, min_lat, max_lat)
+    output = run_sql_on_device(sql)
+    if not output:
+        return {"dates": []}
+    rows = json.loads(output)
+    return {"dates": rows}
 
 
 def query_area_summary(db_path, min_lng, max_lng, min_lat, max_lat):
@@ -254,16 +326,28 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/data.json":
+            if self.data is None:
+                self.send_error(503, "Database not available. Please reconnect the phone.")
+                return
             self._send_json(self.data)
             return
         if self.path == "/api/config.json":
             self._send_json(self.config)
             return
         if self.path == "/api/daily.json":
-            daily = query_daily_summary(self.db_path)
+            try:
+                daily = query_daily_summary_remote()
+            except RuntimeError:
+                if self.db_path is None:
+                    self.send_error(503, "Database not available. Please reconnect the phone.")
+                    return
+                daily = query_daily_summary(self.db_path)
             self._send_json(daily)
             return
         if self.path.startswith("/api/points.json"):
+            if self.db_path is None:
+                self.send_error(503, "Database not available. Please reconnect the phone.")
+                return
             from urllib.parse import parse_qs, urlparse
             qs = parse_qs(urlparse(self.path).query)
             try:
@@ -291,7 +375,13 @@ class Handler(SimpleHTTPRequestHandler):
             except (ValueError, TypeError):
                 self.send_error(400, "Invalid minLng/maxLng/minLat/maxLat parameters")
                 return
-            result = query_area_summary(self.db_path, min_lng, max_lng, min_lat, max_lat)
+            try:
+                result = query_area_summary_remote(min_lng, max_lng, min_lat, max_lat)
+            except RuntimeError:
+                if self.db_path is None:
+                    self.send_error(503, "Database not available. Please reconnect the phone.")
+                    return
+                result = query_area_summary(self.db_path, min_lng, max_lng, min_lat, max_lat)
             self._send_json(result)
             return
         if self.path == "/":
@@ -314,11 +404,16 @@ def main():
         try:
             db_path = pull_database()
         except RuntimeError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
+            print(f"Warning: could not pull database: {e}")
+            print("Area query and daily summary will still work directly on the device.")
+            db_path = None
 
-    data = export_data(db_path)
-    print(f"Loaded {data['trackCount']} tracks, {data['pointCount']} points.")
+    data = None
+    if db_path is not None:
+        data = export_data(db_path)
+        print(f"Loaded {data['trackCount']} tracks, {data['pointCount']} points.")
+    else:
+        print("No local database; trajectory-by-range queries are disabled.")
 
     amap_key = load_amap_key()
     config = {"amapKey": amap_key}

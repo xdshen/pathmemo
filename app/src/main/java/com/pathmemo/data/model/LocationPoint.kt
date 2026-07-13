@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["trackId", "timestamp"])]
+    indices = [
+        Index(value = ["trackId", "timestamp"]),
+        Index(value = ["latitude", "longitude"])
+    ]
 )
 data class LocationPoint(
     @PrimaryKey(autoGenerate = true)
