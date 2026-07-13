@@ -21,11 +21,8 @@ class DayPreviewViewModel(
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    private val _dayTracks = MutableStateFlow<List<Track>>(emptyList())
-    val dayTracks: StateFlow<List<Track>> = _dayTracks.asStateFlow()
-
-    private val _dayPoints = MutableStateFlow<Map<Long, List<LocationPoint>>>(emptyMap())
-    val dayPoints: StateFlow<Map<Long, List<LocationPoint>>> = _dayPoints.asStateFlow()
+    private val _dayPoints = MutableStateFlow<List<LocationPoint>>(emptyList())
+    val dayPoints: StateFlow<List<LocationPoint>> = _dayPoints.asStateFlow()
 
     private val _allDailyDurations = MutableStateFlow<Map<LocalDate, Long>>(emptyMap())
     val allDailyDurations: StateFlow<Map<LocalDate, Long>> = _allDailyDurations.asStateFlow()
@@ -33,7 +30,7 @@ class DayPreviewViewModel(
     val settings = settingsDataStore.settings
 
     init {
-        loadAllTracksSummary()
+        loadAllPointsSummary()
         loadDay(_selectedDate.value)
     }
 
@@ -47,38 +44,41 @@ class DayPreviewViewModel(
             val zone = ZoneId.systemDefault()
             val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
             val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            val tracks = repository.getTracksBetween(start, end)
-            _dayTracks.value = tracks
+            _dayPoints.value = repository.getPointsBetween(start, end)
+        }
+    }
 
-            val pointsMap = mutableMapOf<Long, List<LocationPoint>>()
-            tracks.forEach { track ->
-                pointsMap[track.id] = repository.getPointsForTrackOnce(track.id)
+    private fun loadAllPointsSummary() {
+        viewModelScope.launch {
+            val (min, max) = repository.getPointTimeRange()
+            if (min == null || max == null) {
+                _allDailyDurations.value = emptyMap()
+                return@launch
             }
-            _dayPoints.value = pointsMap
+            val points = repository.getPointsBetween(min, max + 1)
+            val durations = points.groupBy { it.toLocalDate() }
+                .mapValues { entry -> entry.value.totalDurationMillis() }
+            _allDailyDurations.value = durations
         }
     }
 
-    private fun loadAllTracksSummary() {
+    fun refresh() {
+        loadAllPointsSummary()
+        loadDay(_selectedDate.value)
+    }
+
+    fun deleteDay(date: LocalDate) {
         viewModelScope.launch {
-            repository.getAllTracks().collect { tracks ->
-                val durations = tracks.groupBy { it.toLocalDate() }
-                    .mapValues { entry -> entry.value.sumOf { it.durationMillis } }
-                _allDailyDurations.value = durations
+            val zone = ZoneId.systemDefault()
+            val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+            val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val points = repository.getPointsBetween(start, end)
+            val trackIds = points.map { it.trackId }.toSet()
+            trackIds.forEach { trackId ->
+                val track = repository.getTrackById(trackId) ?: return@forEach
+                repository.deleteTrack(track)
             }
-        }
-    }
-
-    fun deleteTrack(track: Track) {
-        viewModelScope.launch {
-            repository.deleteTrack(track)
-            loadDay(_selectedDate.value)
-        }
-    }
-
-    fun renameTrack(track: Track, newName: String) {
-        viewModelScope.launch {
-            repository.renameTrack(track.id, newName)
-            loadDay(_selectedDate.value)
+            refresh()
         }
     }
 }

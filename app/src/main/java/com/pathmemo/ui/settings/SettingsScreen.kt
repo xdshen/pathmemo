@@ -95,6 +95,12 @@ fun SettingsScreen(
                     onClick = { dialogState = SettingDialog.MinAccuracy }
                 )
                 SettingsSwitchItem(
+                    title = stringResource(com.pathmemo.R.string.settings_auto_record),
+                    summary = stringResource(com.pathmemo.R.string.settings_auto_record_summary),
+                    checked = settings.autoRecordEnabled,
+                    onCheckedChange = { viewModel.setAutoRecordEnabled(it) }
+                )
+                SettingsSwitchItem(
                     title = stringResource(com.pathmemo.R.string.settings_auto_start_on_boot),
                     summary = stringResource(com.pathmemo.R.string.settings_auto_start_on_boot_summary),
                     checked = settings.autoStartOnBoot,

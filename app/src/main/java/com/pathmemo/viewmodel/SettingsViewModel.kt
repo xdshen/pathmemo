@@ -45,6 +45,10 @@ class SettingsViewModel(
         viewModelScope.launch { settingsDataStore.setAutoStartOnBoot(enabled) }
     }
 
+    fun setAutoRecordEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsDataStore.setAutoRecordEnabled(enabled) }
+    }
+
     fun clearAllData(onComplete: () -> Unit) {
         viewModelScope.launch {
             repository.deleteAllTracks()

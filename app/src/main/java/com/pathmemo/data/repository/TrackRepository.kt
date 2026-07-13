@@ -4,6 +4,7 @@ import com.pathmemo.data.db.LocationPointDao
 import com.pathmemo.data.db.TrackDao
 import com.pathmemo.data.model.LocationPoint
 import com.pathmemo.data.model.Track
+import com.pathmemo.location.LocationRecorder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -17,8 +18,28 @@ class TrackRepository(
 
     suspend fun getTrackById(trackId: Long): Track? = trackDao.getTrackById(trackId)
 
+    suspend fun getActiveTrack(): Track? = trackDao.getActiveTrack()
+
     suspend fun createTrack(name: String = generateDefaultTrackName()): Long {
         val track = Track(name = name, startTime = System.currentTimeMillis())
+        return trackDao.insert(track)
+    }
+
+    suspend fun getOrCreateTrackForDate(date: java.time.LocalDate): Long {
+        val zone = java.time.ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val existing = trackDao.getTracksBetween(start, end).firstOrNull()
+        return existing?.id ?: createTrackForDate(date)
+    }
+
+    suspend fun createTrackForDate(date: java.time.LocalDate): Long {
+        val track = Track(
+            name = generateTrackNameForDate(date),
+            startTime = date.atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        )
         return trackDao.insert(track)
     }
 
@@ -64,6 +85,28 @@ class TrackRepository(
         return locationPointDao.getLastPoint(trackId)
     }
 
+    suspend fun getPointsBetween(start: Long, end: Long): List<LocationPoint> {
+        return locationPointDao.getPointsBetween(start, end)
+    }
+
+    suspend fun getPointTimeRange(): Pair<Long?, Long?> {
+        return locationPointDao.getMinTimestamp() to locationPointDao.getMaxTimestamp()
+    }
+
+    suspend fun recalculateTrackStats(trackId: Long) {
+        val points = locationPointDao.getPointsForTrackOnce(trackId)
+        if (points.isEmpty()) return
+        val track = trackDao.getTrackById(trackId) ?: return
+        trackDao.update(
+            track.copy(
+                startTime = points.first().timestamp,
+                endTime = points.last().timestamp,
+                distanceMeters = LocationRecorder.computeTotalDistance(points),
+                pointCount = points.size
+            )
+        )
+    }
+
     suspend fun renameTrack(trackId: Long, newName: String) {
         val track = trackDao.getTrackById(trackId) ?: return
         trackDao.update(track.copy(name = newName))
@@ -85,5 +128,9 @@ class TrackRepository(
         val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date())
         return "轨迹 $now"
+    }
+
+    private fun generateTrackNameForDate(date: java.time.LocalDate): String {
+        return "${date.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)} 的轨迹"
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -131,46 +132,69 @@ fun HomeScreen(
 
             // Control buttons
             val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            Row(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp + bottomPadding),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (!state.isRecording) {
-                    FloatingActionButton(
-                        onClick = { viewModel.startRecording() },
-                        shape = CircleShape,
-                        containerColor = TrackBlue
+                // Auto-record switch
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "开始", modifier = Modifier.size(32.dp))
+                        Text("自动记录", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = settings.autoRecordEnabled,
+                            onCheckedChange = { viewModel.setAutoRecordEnabled(it) }
+                        )
                     }
-                } else {
-                    if (state.isPaused) {
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!state.isRecording) {
                         FloatingActionButton(
-                            onClick = { viewModel.resumeRecording() },
+                            onClick = { viewModel.startRecording() },
                             shape = CircleShape,
                             containerColor = TrackBlue
                         ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "继续", modifier = Modifier.size(32.dp))
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "开始", modifier = Modifier.size(32.dp))
                         }
                     } else {
-                        FloatingActionButton(
-                            onClick = { viewModel.pauseRecording() },
-                            shape = CircleShape,
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        ) {
-                            Icon(Icons.Filled.Pause, contentDescription = "暂停", modifier = Modifier.size(32.dp))
+                        if (state.isPaused) {
+                            FloatingActionButton(
+                                onClick = { viewModel.resumeRecording() },
+                                shape = CircleShape,
+                                containerColor = TrackBlue
+                            ) {
+                                Icon(Icons.Filled.PlayArrow, contentDescription = "继续", modifier = Modifier.size(32.dp))
+                            }
+                        } else {
+                            FloatingActionButton(
+                                onClick = { viewModel.pauseRecording() },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            ) {
+                                Icon(Icons.Filled.Pause, contentDescription = "暂停", modifier = Modifier.size(32.dp))
+                            }
                         }
-                    }
 
-                    FloatingActionButton(
-                        onClick = { viewModel.stopRecording() },
-                        shape = CircleShape,
-                        containerColor = MaterialTheme.colorScheme.error
-                    ) {
-                        Icon(Icons.Filled.Stop, contentDescription = "结束", modifier = Modifier.size(32.dp))
+                        FloatingActionButton(
+                            onClick = { viewModel.stopRecording() },
+                            shape = CircleShape,
+                            containerColor = MaterialTheme.colorScheme.error
+                        ) {
+                            Icon(Icons.Filled.Stop, contentDescription = "结束", modifier = Modifier.size(32.dp))
+                        }
                     }
                 }
             }

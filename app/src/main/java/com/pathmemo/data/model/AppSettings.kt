@@ -54,5 +54,6 @@ data class AppSettings(
     val minDistance: MinDistance = MinDistance.EIGHT,
     val minAccuracy: MinAccuracy = MinAccuracy.FIFTY,
     val mapType: MapType = MapType.NORMAL,
-    val autoStartOnBoot: Boolean = false
+    val autoStartOnBoot: Boolean = false,
+    val autoRecordEnabled: Boolean = false
 )

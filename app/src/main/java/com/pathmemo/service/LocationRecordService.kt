@@ -13,6 +13,7 @@ import com.pathmemo.PathMemoApp
 import com.pathmemo.R
 import com.pathmemo.data.model.AppSettings
 import com.pathmemo.data.model.LocationPoint
+import com.pathmemo.data.model.Track
 import com.pathmemo.data.repository.TrackRepository
 import com.pathmemo.data.store.SettingsDataStore
 import com.pathmemo.location.LocationRecorder
@@ -26,6 +27,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import java.time.LocalDate
+import java.time.ZoneId
 
 class LocationRecordService : Service() {
 
@@ -78,59 +81,72 @@ class LocationRecordService : Service() {
         startForegroundService()
 
         serviceScope.launch {
-            val trackId = repository.createTrack()
-            val now = System.currentTimeMillis()
-            _state.update {
-                it.copy(
-                    isRecording = true,
-                    isPaused = false,
-                    currentTrackId = trackId,
-                    startTime = now,
-                    distanceMeters = 0.0,
-                    pointCount = 0
+            val activeTrack = repository.getActiveTrack()
+            if (activeTrack != null) {
+                beginRecording(activeTrack.id, activeTrack)
+            } else {
+                val today = LocalDate.now(ZoneId.systemDefault())
+                val trackId = repository.getOrCreateTrackForDate(today)
+                val track = repository.getTrackById(trackId)
+                beginRecording(trackId, track)
+            }
+        }
+    }
+
+    private suspend fun beginRecording(trackId: Long, track: Track?) {
+        val now = System.currentTimeMillis()
+        _state.update {
+            it.copy(
+                isRecording = true,
+                isPaused = false,
+                currentTrackId = trackId,
+                startTime = track?.startTime ?: now,
+                distanceMeters = track?.distanceMeters ?: 0.0,
+                pointCount = track?.pointCount ?: 0
+            )
+        }
+
+        recordingJob?.cancel()
+        recordingJob = serviceScope.launch { collectLocations() }
+    }
+
+    private suspend fun collectLocations() {
+        locationRecorder.start(
+            intervalMillis = currentSettings.locationInterval.millis,
+            minDistanceMeters = currentSettings.minDistance.meters,
+            minAccuracyMeters = currentSettings.minAccuracy.meters
+        ).collect { location ->
+            val state = _state.value
+            if (state.isPaused || state.currentTrackId == null) return@collect
+
+            val lastPoint = repository.getLastPoint(state.currentTrackId)
+            val addedDistance = if (lastPoint != null) {
+                LocationRecorder.computeDistance(
+                    lastPoint.latitude, lastPoint.longitude,
+                    location.latitude, location.longitude
+                )
+            } else 0.0
+
+            val point = LocationPoint(
+                trackId = state.currentTrackId,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                altitude = location.altitude,
+                accuracy = location.accuracy,
+                speed = location.speed,
+                timestamp = location.time
+            )
+            repository.insertPoint(point)
+
+            _state.update { current ->
+                current.copy(
+                    distanceMeters = current.distanceMeters + addedDistance,
+                    pointCount = current.pointCount + 1,
+                    lastLocation = location
                 )
             }
 
-            recordingJob?.cancel()
-            recordingJob = serviceScope.launch {
-                locationRecorder.start(
-                    intervalMillis = currentSettings.locationInterval.millis,
-                    minDistanceMeters = currentSettings.minDistance.meters,
-                    minAccuracyMeters = currentSettings.minAccuracy.meters
-                ).collect { location ->
-                    val state = _state.value
-                    if (state.isPaused || state.currentTrackId == null) return@collect
-
-                    val lastPoint = repository.getLastPoint(state.currentTrackId)
-                    val addedDistance = if (lastPoint != null) {
-                        LocationRecorder.computeDistance(
-                            lastPoint.latitude, lastPoint.longitude,
-                            location.latitude, location.longitude
-                        )
-                    } else 0.0
-
-                    val point = LocationPoint(
-                        trackId = state.currentTrackId,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        altitude = location.altitude,
-                        accuracy = location.accuracy,
-                        speed = location.speed,
-                        timestamp = location.time
-                    )
-                    repository.insertPoint(point)
-
-                    _state.update { current ->
-                        current.copy(
-                            distanceMeters = current.distanceMeters + addedDistance,
-                            pointCount = current.pointCount + 1,
-                            lastLocation = location
-                        )
-                    }
-
-                    updateNotification()
-                }
-            }
+            updateNotification()
         }
     }
 
@@ -164,6 +180,19 @@ class LocationRecordService : Service() {
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /**
+     * Restore an active (unfinished) track from the database.
+     * Used when the service restarts unexpectedly or on boot.
+     */
+    fun restoreActiveTrack() {
+        if (_state.value.isRecording) return
+        serviceScope.launch {
+            val track = repository.getActiveTrack() ?: return@launch
+            startForegroundService()
+            beginRecording(track.id, track)
+        }
     }
 
     private fun startForegroundService() {

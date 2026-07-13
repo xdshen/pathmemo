@@ -33,7 +33,7 @@ class BootReceiver : BroadcastReceiver(), KoinComponent {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 settingsDataStore.settings.collect { settings ->
-                    if (settings.autoStartOnBoot) {
+                    if (settings.autoRecordEnabled || settings.autoStartOnBoot) {
                         if (hasRequiredPermissions(context)) {
                             Log.d(TAG, "Auto-starting location recording")
                             startRecordingService(context)

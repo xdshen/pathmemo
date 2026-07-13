@@ -34,9 +34,6 @@ fun PathMemoNavHost(
             OverviewScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onTrackClick = { trackId ->
-                    navController.navigate(Screen.TrackDetail.createRoute(trackId))
-                },
                 onDateClick = { dateMillis ->
                     navController.navigate(Screen.DayPreview.createRoute(dateMillis))
                 },
@@ -52,10 +49,7 @@ fun PathMemoNavHost(
             val dateMillis = backStackEntry.arguments?.getLong("dateMillis") ?: System.currentTimeMillis()
             DayPreviewScreen(
                 initialDate = dateMillis,
-                onBack = { navController.popBackStack() },
-                onTrackClick = { trackId ->
-                    navController.navigate(Screen.TrackDetail.createRoute(trackId))
-                }
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
@@ -70,10 +64,7 @@ fun PathMemoNavHost(
             RangePreviewScreen(
                 initialStartMillis = startMillis,
                 initialEndMillis = endMillis,
-                onBack = { navController.popBackStack() },
-                onTrackClick = { trackId ->
-                    navController.navigate(Screen.TrackDetail.createRoute(trackId))
-                }
+                onBack = { navController.popBackStack() }
             )
         }
         composable(

@@ -14,6 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.pathmemo.data.store.SettingsDataStore
+import kotlinx.coroutines.launch
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -30,6 +34,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val settingsDataStore = SettingsDataStore(this)
+        lifecycleScope.launch {
+            settingsDataStore.settings.collect { settings ->
+                if (settings.autoRecordEnabled) {
+                    val serviceIntent = Intent(this@MainActivity, LocationRecordService::class.java).apply {
+                        action = LocationRecordService.ACTION_START
+                    }
+                    ContextCompat.startForegroundService(this@MainActivity, serviceIntent)
+                }
+                return@collect
+            }
+        }
+
         setContent {
             PathMemoTheme {
                 Surface(
@@ -43,10 +60,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 
     @OptIn(ExperimentalPermissionsApi::class)

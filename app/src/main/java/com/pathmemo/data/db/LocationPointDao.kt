@@ -24,6 +24,15 @@ interface LocationPointDao {
     @Query("SELECT * FROM location_points WHERE trackId = :trackId ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLastPoint(trackId: Long): LocationPoint?
 
+    @Query("SELECT * FROM location_points WHERE timestamp >= :start AND timestamp < :end ORDER BY timestamp ASC")
+    suspend fun getPointsBetween(start: Long, end: Long): List<LocationPoint>
+
+    @Query("SELECT MIN(timestamp) FROM location_points")
+    suspend fun getMinTimestamp(): Long?
+
+    @Query("SELECT MAX(timestamp) FROM location_points")
+    suspend fun getMaxTimestamp(): Long?
+
     @Query("DELETE FROM location_points WHERE trackId = :trackId")
     suspend fun deletePointsForTrack(trackId: Long)
 }

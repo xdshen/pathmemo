@@ -26,6 +26,7 @@ class SettingsDataStore(private val context: Context) {
     private val minAccuracyKey = floatPreferencesKey("min_accuracy_m")
     private val mapTypeKey = intPreferencesKey("map_type")
     private val autoStartOnBootKey = booleanPreferencesKey("auto_start_on_boot")
+    private val autoRecordEnabledKey = booleanPreferencesKey("auto_record_enabled")
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         AppSettings(
@@ -41,7 +42,8 @@ class SettingsDataStore(private val context: Context) {
             mapType = MapType.fromValue(
                 prefs[mapTypeKey] ?: MapType.NORMAL.value
             ),
-            autoStartOnBoot = prefs[autoStartOnBootKey] ?: false
+            autoStartOnBoot = prefs[autoStartOnBootKey] ?: false,
+            autoRecordEnabled = prefs[autoRecordEnabledKey] ?: false
         )
     }
 
@@ -72,6 +74,12 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setAutoStartOnBoot(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[autoStartOnBootKey] = enabled
+        }
+    }
+
+    suspend fun setAutoRecordEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[autoRecordEnabledKey] = enabled
         }
     }
 }

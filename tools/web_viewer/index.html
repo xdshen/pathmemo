@@ -301,14 +301,13 @@
         function renderCalendar() {
             const el = document.getElementById('calendar');
             const daily = {};
-            allData.tracks.forEach(t => {
-                const d = new Date(t.startTime);
+            allData.points.forEach(p => {
+                const d = new Date(p.timestamp);
                 const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
                 const day = d.getDate();
                 if (!daily[key]) daily[key] = {};
                 if (!daily[key][day]) daily[key][day] = { count: 0, duration: 0 };
                 daily[key][day].count++;
-                daily[key][day].duration += (t.endTime || Date.now()) - t.startTime;
             });
 
             const months = Object.keys(daily).sort().reverse();
@@ -341,18 +340,21 @@
             }).join('');
         }
 
-        function renderTrackList(tracks) {
+        function renderDateList(dates) {
             const el = document.getElementById('track-list');
-            if (tracks.length === 0) {
-                el.innerHTML = '<div style="color:#999;text-align:center;margin-top:20px">没有轨迹</div>';
+            if (dates.length === 0) {
+                el.innerHTML = '<div style="color:#999;text-align:center;margin-top:20px">没有记录</div>';
                 return;
             }
-            el.innerHTML = tracks.slice().reverse().map(t => {
-                const duration = (t.endTime || Date.now()) - t.startTime;
+            el.innerHTML = dates.map(dateStr => {
+                const startTime = new Date(dateStr + 'T00:00:00').getTime();
+                const endTime = new Date(dateStr + 'T23:59:59.999').getTime();
+                const dayPoints = allData.points.filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
+                const duration = dayPoints.length > 0 ? dayPoints[dayPoints.length - 1].timestamp - dayPoints[0].timestamp : 0;
                 return `
-                    <div class="track-item" onclick="focusTrack(${t.id})">
-                        <div class="track-name">${escapeHtml(t.name)}</div>
-                        <div class="track-meta">${formatDateTime(t.startTime)} · ${formatDistance(t.distanceMeters)} · ${formatDuration(duration)} · ${t.pointCount}点</div>
+                    <div class="track-item" onclick="selectDay('${dateStr}')">
+                        <div class="track-name">${dateStr}</div>
+                        <div class="track-meta">${dayPoints.length} 个点 · ${formatDistance(computeTotalDistance(dayPoints))} · ${formatDuration(duration)}</div>
                     </div>
                 `;
             }).join('');
@@ -414,14 +416,20 @@
             const startTime = new Date(startDate + 'T00:00:00').getTime();
             const endTime = new Date(endDate + 'T23:59:59.999').getTime();
 
-            const filteredTracks = allData.tracks.filter(t => t.startTime >= startTime && t.startTime <= endTime);
-            const trackIds = new Set(filteredTracks.map(t => t.id));
-            const filteredPoints = allData.points.filter(p => trackIds.has(p.trackId));
+            const filteredPoints = allData.points.filter(p => p.timestamp >= startTime && p.timestamp <= endTime);
+            const involvedTrackIds = new Set(filteredPoints.map(p => p.trackId));
+            const filteredTracks = allData.tracks.filter(t => involvedTrackIds.has(t.id));
 
-            document.getElementById('stat-tracks').textContent = filteredTracks.length + ' 条轨迹';
+            document.getElementById('stat-tracks').textContent = filteredTracks.length + ' 条记录段';
             document.getElementById('stat-points').textContent = filteredPoints.length + ' 个点';
 
-            renderTrackList(filteredTracks);
+            const dates = [];
+            let current = new Date(startTime);
+            while (current.getTime() <= endTime) {
+                dates.push(formatDateInput(current));
+                current.setDate(current.getDate() + 1);
+            }
+            renderDateList(dates);
             renderMap(filteredPoints);
         }
 
@@ -430,7 +438,7 @@
         }
 
         function resetRange() {
-            const dates = allData.tracks.map(t => t.startTime);
+            const dates = allData.points.map(p => p.timestamp);
             if (dates.length === 0) return;
             const min = new Date(Math.min(...dates));
             const max = new Date(Math.max(...dates));
@@ -449,19 +457,22 @@
             applyRange();
         }
 
-        function focusTrack(trackId) {
-            const track = allData.tracks.find(t => t.id === trackId);
-            if (!track) return;
-            const trackPoints = allData.points.filter(p => p.trackId === trackId);
-            if (trackPoints.length === 0) return;
-            const dates = trackPoints.map(p => new Date(p.timestamp));
-            const min = new Date(Math.min(...dates));
-            const max = new Date(Math.max(...dates));
-            document.getElementById('start-date').value = formatDateInput(min);
-            document.getElementById('end-date').value = formatDateInput(max);
-            selectedPoint = null;
-            infoWindow && infoWindow.close();
-            applyRange();
+        function computeTotalDistance(points) {
+            if (points.length < 2) return 0;
+            let total = 0;
+            const R = 6371000;
+            for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1];
+                const curr = points[i];
+                const dLat = (curr.latitude - prev.latitude) * Math.PI / 180;
+                const dLon = (curr.longitude - prev.longitude) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(prev.latitude * Math.PI / 180) * Math.cos(curr.latitude * Math.PI / 180) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                total += R * c;
+            }
+            return total;
         }
 
         function formatDateInput(d) {

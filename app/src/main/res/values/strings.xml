@@ -15,6 +15,8 @@
     <string name="settings_min_accuracy">定位精度阈值</string>
     <string name="settings_map">地图设置</string>
     <string name="settings_map_type">地图类型</string>
+    <string name="settings_auto_record">自动记录</string>
+    <string name="settings_auto_record_summary">无需手动开始，持续自动记录轨迹</string>
     <string name="settings_auto_start_on_boot">开机自动记录</string>
     <string name="settings_auto_start_on_boot_summary">设备重启后自动开始轨迹记录</string>
 

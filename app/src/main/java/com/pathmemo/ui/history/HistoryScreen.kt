@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,10 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pathmemo.data.model.Track
+import com.pathmemo.data.model.LocationPoint
 import com.pathmemo.viewmodel.HistoryViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
@@ -49,12 +49,12 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit,
-    onTrackClick: (Long) -> Unit,
+    onDateClick: (Long) -> Unit,
     viewModel: HistoryViewModel = koinViewModel()
 ) {
-    val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    var trackToRename by remember { mutableStateOf<Track?>(null) }
-    var trackToDelete by remember { mutableStateOf<Track?>(null) }
+    val dates by viewModel.dates.collectAsStateWithLifecycle()
+    val datePoints by viewModel.datePoints.collectAsStateWithLifecycle()
+    var dateToDelete by remember { mutableStateOf<LocalDate?>(null) }
 
     Scaffold(
         topBar = {
@@ -68,7 +68,7 @@ fun HistoryScreen(
             )
         }
     ) { paddingValues ->
-        if (tracks.isEmpty()) {
+        if (dates.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -85,48 +85,45 @@ fun HistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(tracks, key = { it.id }) { track ->
-                    TrackItem(
-                        track = track,
-                        onClick = { onTrackClick(track.id) },
-                        onRename = { trackToRename = track },
-                        onDelete = { trackToDelete = track }
+                items(dates, key = { it.toString() }) { date ->
+                    val points = datePoints[date] ?: emptyList()
+                    DateItem(
+                        date = date,
+                        points = points,
+                        onClick = {
+                            val millis = date.atStartOfDay(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli()
+                            onDateClick(millis)
+                        },
+                        onDelete = { dateToDelete = date }
                     )
                 }
             }
         }
     }
 
-    trackToRename?.let { track ->
-        RenameDialog(
-            currentName = track.name,
-            onDismiss = { trackToRename = null },
-            onConfirm = { newName ->
-                viewModel.renameTrack(track, newName)
-                trackToRename = null
-            }
-        )
-    }
-
-    trackToDelete?.let { track ->
+    dateToDelete?.let { date ->
         DeleteConfirmDialog(
-            trackName = track.name,
-            onDismiss = { trackToDelete = null },
+            date = date,
+            onDismiss = { dateToDelete = null },
             onConfirm = {
-                viewModel.deleteTrack(track)
-                trackToDelete = null
+                viewModel.deleteDate(date)
+                dateToDelete = null
             }
         )
     }
 }
 
 @Composable
-private fun TrackItem(
-    track: Track,
+private fun DateItem(
+    date: LocalDate,
+    points: List<LocationPoint>,
     onClick: () -> Unit,
-    onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val totalDistance = computeTotalDistance(points)
+    val duration = if (points.isEmpty()) 0L else points.last().timestamp - points.first().timestamp
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,71 +137,36 @@ private fun TrackItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = track.name,
+                    text = date.format(DateTimeFormatter.ofPattern("yyyy年MM月dd日 EEEE", Locale.CHINA)),
                     style = MaterialTheme.typography.titleMedium
                 )
-                Row {
-                    IconButton(onClick = onRename) {
-                        Icon(Icons.Filled.Edit, contentDescription = "重命名")
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Filled.Delete, contentDescription = "删除")
-                    }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "删除")
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${formatTime(track.startTime)} · ${formatDuration(track.durationMillis)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "距离: ${formatDistance(track.distanceMeters)}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "点数: ${track.pointCount}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "点数: ${points.size}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "距离: ${formatDistance(totalDistance)}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "时长: ${formatDuration(duration)}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 }
 
 @Composable
-private fun RenameDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf(currentName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("重命名轨迹") },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) { Text("确定") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-}
-
-@Composable
 private fun DeleteConfirmDialog(
-    trackName: String,
+    date: LocalDate,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("删除轨迹") },
-        text = { Text("确定要删除 \"$trackName\" 吗？此操作不可恢复。") },
+        title = { Text("删除记录") },
+        text = { Text("确定要删除 ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))} 的全部轨迹记录吗？此操作不可恢复。") },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text("删除") }
         },
@@ -214,8 +176,22 @@ private fun DeleteConfirmDialog(
     )
 }
 
-private fun formatTime(timestamp: Long): String {
-    return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
+private fun computeTotalDistance(points: List<LocationPoint>): Double {
+    if (points.size < 2) return 0.0
+    var total = 0.0
+    for (i in 1 until points.size) {
+        val prev = points[i - 1]
+        val curr = points[i]
+        val r = 6371000.0
+        val dLat = Math.toRadians(curr.latitude - prev.latitude)
+        val dLon = Math.toRadians(curr.longitude - prev.longitude)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(prev.latitude)) * kotlin.math.cos(Math.toRadians(curr.latitude)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        total += r * c
+    }
+    return total
 }
 
 private fun formatDuration(millis: Long): String {

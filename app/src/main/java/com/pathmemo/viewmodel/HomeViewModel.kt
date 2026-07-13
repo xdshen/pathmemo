@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     application: Application,
     private val binderManager: LocationRecordService.BinderManager,
-    settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore
 ) : AndroidViewModel(application) {
 
     val settings: StateFlow<AppSettings> = MutableStateFlow(AppSettings()).also { stateFlow ->
@@ -81,6 +81,19 @@ class HomeViewModel(
 
     fun stopRecording() {
         sendServiceAction(LocationRecordService.ACTION_STOP)
+    }
+
+    fun setAutoRecordEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val dataStore = settingsDataStore
+            dataStore.setAutoRecordEnabled(enabled)
+            val currentState = _recordingState.value
+            if (enabled && !currentState.isRecording) {
+                sendServiceAction(LocationRecordService.ACTION_START)
+            } else if (!enabled && currentState.isRecording) {
+                sendServiceAction(LocationRecordService.ACTION_STOP)
+            }
+        }
     }
 
     private fun sendServiceAction(action: String) {

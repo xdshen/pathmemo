@@ -45,10 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pathmemo.data.model.LocationPoint
-import com.pathmemo.data.model.Track
 import com.pathmemo.ui.map.TimeColorLegend
 import com.pathmemo.ui.map.TrackMapView
-import com.pathmemo.ui.theme.TrackBlue
 import com.pathmemo.viewmodel.RangePreviewViewModel
 import com.pathmemo.viewmodel.toLocalDate
 import org.koin.androidx.compose.koinViewModel
@@ -64,17 +62,13 @@ fun RangePreviewScreen(
     initialStartMillis: Long? = null,
     initialEndMillis: Long? = null,
     onBack: () -> Unit,
-    onTrackClick: (Long) -> Unit,
     viewModel: RangePreviewViewModel = koinViewModel()
 ) {
     val startDate by viewModel.startDate.collectAsStateWithLifecycle()
     val endDate by viewModel.endDate.collectAsStateWithLifecycle()
-    val rangeTracks by viewModel.rangeTracks.collectAsStateWithLifecycle()
     val rangePoints by viewModel.rangePoints.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle(initialValue = com.pathmemo.data.model.AppSettings())
 
-    var trackToRename by remember { mutableStateOf<Track?>(null) }
-    var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var selectedPoint by remember { mutableStateOf<LocationPoint?>(null) }
 
     LaunchedEffect(initialStartMillis, initialEndMillis) {
@@ -102,7 +96,7 @@ fun RangePreviewScreen(
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 TrackMapView(
-                    tracks = rangePoints,
+                    points = rangePoints,
                     selectedPoint = selectedPoint,
                     onPointClick = { selectedPoint = it },
                     modifier = Modifier.fillMaxSize(),
@@ -117,36 +111,10 @@ fun RangePreviewScreen(
                     modifier = Modifier.fillMaxSize(),
                     startDate = startDate,
                     endDate = endDate,
-                    rangeTracks = rangeTracks,
-                    rangePoints = rangePoints,
-                    onTrackClick = onTrackClick,
-                    onRename = { trackToRename = it },
-                    onDelete = { trackToDelete = it }
+                    rangePoints = rangePoints
                 )
             }
         }
-    }
-
-    trackToRename?.let { track ->
-        RenameDialog(
-            currentName = track.name,
-            onDismiss = { trackToRename = null },
-            onConfirm = { newName ->
-                viewModel.renameTrack(track, newName)
-                trackToRename = null
-            }
-        )
-    }
-
-    trackToDelete?.let { track ->
-        DeleteConfirmDialog(
-            trackName = track.name,
-            onDismiss = { trackToDelete = null },
-            onConfirm = {
-                viewModel.deleteTrack(track)
-                trackToDelete = null
-            }
-        )
     }
 }
 
@@ -155,18 +123,14 @@ private fun RangeTrackPanel(
     modifier: Modifier = Modifier,
     startDate: LocalDate,
     endDate: LocalDate,
-    rangeTracks: List<Track>,
-    rangePoints: Map<Long, List<LocationPoint>>,
-    onTrackClick: (Long) -> Unit,
-    onRename: (Track) -> Unit,
-    onDelete: (Track) -> Unit
+    rangePoints: List<LocationPoint>
 ) {
-    val grouped = remember(rangeTracks) {
-        rangeTracks.groupBy { it.toLocalDate() }.toSortedMap()
+    val grouped = remember(rangePoints) {
+        rangePoints.groupBy { it.toLocalDate() }.toSortedMap()
     }
-    val totalDistance = rangeTracks.sumOf { it.distanceMeters }
-    val totalDuration = rangeTracks.sumOf { it.durationMillis }
-    val totalPoints = rangePoints.values.sumOf { it.size }
+    val totalDistance = computeTotalDistance(rangePoints)
+    val totalDuration = if (rangePoints.isEmpty()) 0L else rangePoints.last().timestamp - rangePoints.first().timestamp
+    val totalPoints = rangePoints.size
 
     Column(
         modifier = modifier
@@ -190,7 +154,7 @@ private fun RangeTrackPanel(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem("轨迹", "${rangeTracks.size} 条")
+                    StatItem("记录段", "${rangePoints.map { it.trackId }.toSet().size} 段")
                     StatItem("点位", "$totalPoints")
                     StatItem("距离", formatDistance(totalDistance))
                     StatItem("时长", formatDuration(totalDuration))
@@ -214,76 +178,30 @@ private fun RangeTrackPanel(
                     }
                 }
             } else {
-                grouped.forEach { (date, tracks) ->
+                grouped.forEach { (date, points) ->
                     item(key = date) {
-                        Text(
-                            text = date.format(DateTimeFormatter.ofPattern("MM月dd日 EEEE", Locale.CHINA)),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
+                        val dayDistance = computeTotalDistance(points)
+                        val dayDuration = if (points.isEmpty()) 0L else points.last().timestamp - points.first().timestamp
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = date.format(DateTimeFormatter.ofPattern("MM月dd日 EEEE", Locale.CHINA)),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${points.size} 个点 · ${formatDistance(dayDistance)} · ${formatDuration(dayDuration)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
-                    items(tracks, key = { it.id }) { track ->
-                        TimelineTrackItem(
-                            track = track,
-                            onClick = { onTrackClick(track.id) },
-                            onRename = { onRename(track) },
-                            onDelete = { onDelete(track) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimelineTrackItem(
-    track: Track,
-    onClick: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = TrackBlue,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Column {
-                    Text(
-                        text = track.name,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "${formatTime(track.startTime)} - ${formatTime(track.endTime ?: track.startTime)} · ${formatDistance(track.distanceMeters)} · ${formatDuration(track.durationMillis)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Row {
-                IconButton(onClick = onRename) {
-                    Icon(Icons.Filled.Edit, contentDescription = "重命名", modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "删除", modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -298,49 +216,22 @@ private fun StatItem(label: String, value: String) {
     }
 }
 
-@Composable
-private fun RenameDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf(currentName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("重命名轨迹") },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) { Text("确定") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-}
-
-@Composable
-private fun DeleteConfirmDialog(
-    trackName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("删除轨迹") },
-        text = { Text("确定要删除 \"$trackName\" 吗？此操作不可恢复。") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text("删除") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
+private fun computeTotalDistance(points: List<LocationPoint>): Double {
+    if (points.size < 2) return 0.0
+    var total = 0.0
+    for (i in 1 until points.size) {
+        val prev = points[i - 1]
+        val curr = points[i]
+        val r = 6371000.0
+        val dLat = Math.toRadians(curr.latitude - prev.latitude)
+        val dLon = Math.toRadians(curr.longitude - prev.longitude)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(prev.latitude)) * kotlin.math.cos(Math.toRadians(curr.latitude)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        total += r * c
+    }
+    return total
 }
 
 private fun millisToLocalDate(millis: Long): LocalDate {

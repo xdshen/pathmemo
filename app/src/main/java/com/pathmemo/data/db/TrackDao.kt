@@ -29,6 +29,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id = :trackId LIMIT 1")
     fun getTrackByIdFlow(trackId: Long): Flow<Track?>
 
+    @Query("SELECT * FROM tracks WHERE endTime IS NULL ORDER BY startTime DESC LIMIT 1")
+    suspend fun getActiveTrack(): Track?
+
     @Query("DELETE FROM tracks")
     suspend fun deleteAll()
 

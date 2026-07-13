@@ -66,17 +66,13 @@ import java.util.Locale
 fun DayPreviewScreen(
     initialDate: Long? = null,
     onBack: () -> Unit,
-    onTrackClick: (Long) -> Unit,
     viewModel: DayPreviewViewModel = koinViewModel()
 ) {
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    val dayTracks by viewModel.dayTracks.collectAsStateWithLifecycle()
     val dayPoints by viewModel.dayPoints.collectAsStateWithLifecycle()
     val dailyDurations by viewModel.allDailyDurations.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle(initialValue = com.pathmemo.data.model.AppSettings())
 
-    var trackToRename by remember { mutableStateOf<Track?>(null) }
-    var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var selectedPoint by remember { mutableStateOf<LocationPoint?>(null) }
 
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -108,13 +104,10 @@ fun DayPreviewScreen(
         sheetContent = {
             DayPreviewSheetContent(
                 selectedDate = selectedDate,
-                dayTracks = dayTracks,
                 dayPoints = dayPoints,
                 dailyDurations = dailyDurations,
                 onDateSelected = { viewModel.selectDate(it) },
-                onTrackClick = onTrackClick,
-                onRename = { trackToRename = it },
-                onDelete = { trackToDelete = it }
+                onDelete = { viewModel.deleteDay(selectedDate) }
             )
         }
     ) { paddingValues ->
@@ -124,7 +117,7 @@ fun DayPreviewScreen(
                 .padding(paddingValues)
         ) {
             TrackMapView(
-                tracks = dayPoints,
+                points = dayPoints,
                 selectedPoint = selectedPoint,
                 onPointClick = { selectedPoint = it },
                 modifier = Modifier.fillMaxSize(),
@@ -132,44 +125,19 @@ fun DayPreviewScreen(
             )
         }
     }
-
-    trackToRename?.let { track ->
-        RenameDialog(
-            currentName = track.name,
-            onDismiss = { trackToRename = null },
-            onConfirm = { newName ->
-                viewModel.renameTrack(track, newName)
-                trackToRename = null
-            }
-        )
-    }
-
-    trackToDelete?.let { track ->
-        DeleteConfirmDialog(
-            trackName = track.name,
-            onDismiss = { trackToDelete = null },
-            onConfirm = {
-                viewModel.deleteTrack(track)
-                trackToDelete = null
-            }
-        )
-    }
 }
 
 @Composable
 private fun DayPreviewSheetContent(
     selectedDate: LocalDate,
-    dayTracks: List<Track>,
-    dayPoints: Map<Long, List<LocationPoint>>,
+    dayPoints: List<LocationPoint>,
     dailyDurations: Map<LocalDate, Long>,
     onDateSelected: (LocalDate) -> Unit,
-    onTrackClick: (Long) -> Unit,
-    onRename: (Track) -> Unit,
-    onDelete: (Track) -> Unit
+    onDelete: () -> Unit
 ) {
-    val totalDistance = dayTracks.sumOf { it.distanceMeters }
-    val totalDuration = dayTracks.sumOf { it.durationMillis }
-    val totalPoints = dayPoints.values.sumOf { it.size }
+    val totalDistance = computeTotalDistance(dayPoints)
+    val totalDuration = if (dayPoints.isEmpty()) 0L else dayPoints.last().timestamp - dayPoints.first().timestamp
+    val totalPoints = dayPoints.size
 
     Column(
         modifier = Modifier
@@ -220,7 +188,7 @@ private fun DayPreviewSheetContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem("轨迹", "${dayTracks.size} 条")
+                    StatItem("记录段", "${dayPoints.map { it.trackId }.toSet().size} 段")
                     StatItem("点位", "$totalPoints")
                     StatItem("距离", formatDistance(totalDistance))
                     StatItem("时长", formatDuration(totalDuration))
@@ -228,13 +196,25 @@ private fun DayPreviewSheetContent(
             }
         }
 
-        Text(
-            text = "当日时间线",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "当日时间线",
+                style = MaterialTheme.typography.titleMedium
+            )
+            if (dayPoints.isNotEmpty()) {
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "删除", modifier = Modifier.size(20.dp))
+                }
+            }
+        }
 
-        if (dayTracks.isEmpty()) {
+        if (dayPoints.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,66 +228,13 @@ private fun DayPreviewSheetContent(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                dayTracks.forEach { track ->
-                    TimelineTrackItem(
-                        track = track,
-                        onClick = { onTrackClick(track.id) },
-                        onRename = { onRename(track) },
-                        onDelete = { onDelete(track) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimelineTrackItem(
-    track: Track,
-    onClick: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = TrackBlue,
-                    modifier = Modifier.size(20.dp)
+                val startTime = dayPoints.first().timestamp
+                val endTime = dayPoints.last().timestamp
+                Text(
+                    text = "${formatTime(startTime)} - ${formatTime(endTime)} · ${formatDistance(totalDistance)} · ${formatDuration(totalDuration)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.size(8.dp))
-                Column {
-                    Text(
-                        text = track.name,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "${formatTime(track.startTime)} - ${formatTime(track.endTime ?: track.startTime)} · ${formatDistance(track.distanceMeters)} · ${formatDuration(track.durationMillis)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Row {
-                IconButton(onClick = onRename) {
-                    Icon(Icons.Filled.Edit, contentDescription = "重命名", modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "删除", modifier = Modifier.size(20.dp))
-                }
             }
         }
     }
@@ -321,49 +248,22 @@ private fun StatItem(label: String, value: String) {
     }
 }
 
-@Composable
-private fun RenameDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf(currentName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("重命名轨迹") },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) { Text("确定") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-}
-
-@Composable
-private fun DeleteConfirmDialog(
-    trackName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("删除轨迹") },
-        text = { Text("确定要删除 \"$trackName\" 吗？此操作不可恢复。") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text("删除") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
+private fun computeTotalDistance(points: List<LocationPoint>): Double {
+    if (points.size < 2) return 0.0
+    var total = 0.0
+    for (i in 1 until points.size) {
+        val prev = points[i - 1]
+        val curr = points[i]
+        val r = 6371000.0
+        val dLat = Math.toRadians(curr.latitude - prev.latitude)
+        val dLon = Math.toRadians(curr.longitude - prev.longitude)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(prev.latitude)) * kotlin.math.cos(Math.toRadians(curr.latitude)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        total += r * c
+    }
+    return total
 }
 
 private fun formatTime(timestamp: Long): String {

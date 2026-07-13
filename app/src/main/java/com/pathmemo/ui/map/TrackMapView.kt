@@ -40,7 +40,7 @@ import java.util.Locale
  */
 @Composable
 fun TrackMapView(
-    tracks: Map<Long, List<LocationPoint>>,
+    points: List<LocationPoint>,
     selectedPoint: LocationPoint? = null,
     onPointClick: (LocationPoint) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -93,7 +93,7 @@ fun TrackMapView(
         }
     }
 
-    val allPoints = tracks.values.flatten()
+    val allPoints = points
 
     LaunchedEffect(allPoints) {
         if (allPoints.isEmpty()) return@LaunchedEffect
@@ -138,7 +138,7 @@ fun TrackMapView(
             if (mv.map.mapType != mapType.value) {
                 mv.map.mapType = mapType.value
             }
-            Log.i("TrackMapView", "update called, tracks=${tracks.size}, totalPoints=${allPoints.size}")
+            Log.i("TrackMapView", "update called, totalPoints=${allPoints.size}")
             mv.map.clear()
             if (allPoints.isEmpty()) {
                 Log.i("TrackMapView", "no points to draw")
@@ -146,29 +146,27 @@ fun TrackMapView(
             }
 
             var selectedMarker: Marker? = null
-            tracks.values.forEach { points ->
-                points.forEach { p ->
-                    val isSelected = selectedPoint == p
-                    val color = getPointColor(p.timestamp)
-                    val icon = if (isSelected) {
-                        highlightDotCache.getOrPut(color) {
-                            createDotBitmap(context, color, 18f)
-                        }
-                    } else {
-                        dotCache.getOrPut(color) {
-                            createDotBitmap(context, color, 10f)
-                        }
+            allPoints.forEach { p ->
+                val isSelected = selectedPoint == p
+                val color = getPointColor(p.timestamp)
+                val icon = if (isSelected) {
+                    highlightDotCache.getOrPut(color) {
+                        createDotBitmap(context, color, 18f)
                     }
-                    val marker = mv.map.addMarker(
-                        MarkerOptions()
-                            .position(LatLng(p.latitude, p.longitude))
-                            .icon(icon)
-                            .anchor(0.5f, 0.5f)
-                    )
-                    marker?.setObject(p)
-                    if (isSelected) {
-                        selectedMarker = marker
+                } else {
+                    dotCache.getOrPut(color) {
+                        createDotBitmap(context, color, 10f)
                     }
+                }
+                val marker = mv.map.addMarker(
+                    MarkerOptions()
+                        .position(LatLng(p.latitude, p.longitude))
+                        .icon(icon)
+                        .anchor(0.5f, 0.5f)
+                )
+                marker?.setObject(p)
+                if (isSelected) {
+                    selectedMarker = marker
                 }
             }
             selectedMarker?.showInfoWindow()

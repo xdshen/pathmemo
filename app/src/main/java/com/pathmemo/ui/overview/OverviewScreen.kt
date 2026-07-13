@@ -49,7 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pathmemo.data.model.Track
+import com.pathmemo.data.model.LocationPoint
 import com.pathmemo.ui.components.CalendarHeatmap
 import com.pathmemo.viewmodel.OverviewViewModel
 import com.pathmemo.viewmodel.groupByDate
@@ -66,21 +66,18 @@ import java.util.Locale
 fun OverviewScreen(
     onBack: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onTrackClick: (Long) -> Unit,
     onDateClick: (Long) -> Unit,
     onNavigateToRangePreview: (Long, Long) -> Unit,
     viewModel: OverviewViewModel = koinViewModel()
 ) {
-    val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    val grouped = remember(tracks) { tracks.groupByDate() }
-    val dailyDurations = remember(tracks) {
+    val allPoints by viewModel.allPoints.collectAsStateWithLifecycle()
+    val grouped = remember(allPoints) { allPoints.groupByDate() }
+    val dailyDurations = remember(allPoints) {
         grouped.mapValues { it.value.totalDurationMillis() }
     }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    val dayTracks by viewModel.dayTracks.collectAsStateWithLifecycle()
 
-    var trackToRename by remember { mutableStateOf<Track?>(null) }
-    var trackToDelete by remember { mutableStateOf<Track?>(null) }
+    var dateToDelete by remember { mutableStateOf<LocalDate?>(null) }
     var showRangePicker by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -139,11 +136,11 @@ fun OverviewScreen(
                     }
                 }
             } else {
-                grouped.forEach { (date, dateTracks) ->
+                grouped.forEach { (date, datePoints) ->
                     item(key = date) {
                         DayCard(
                             date = date,
-                            tracks = dateTracks,
+                            points = datePoints,
                             isExpanded = selectedDate == date,
                             onExpandClick = {
                                 if (selectedDate == date) {
@@ -153,9 +150,7 @@ fun OverviewScreen(
                                 }
                             },
                             onDateClick = onDateClick,
-                            onTrackClick = onTrackClick,
-                            onRename = { trackToRename = it },
-                            onDelete = { trackToDelete = it }
+                            onDelete = { dateToDelete = date }
                         )
                     }
                 }
@@ -163,24 +158,13 @@ fun OverviewScreen(
         }
     }
 
-    trackToRename?.let { track ->
-        RenameDialog(
-            currentName = track.name,
-            onDismiss = { trackToRename = null },
-            onConfirm = { newName ->
-                viewModel.renameTrack(track, newName)
-                trackToRename = null
-            }
-        )
-    }
-
-    trackToDelete?.let { track ->
+    dateToDelete?.let { date ->
         DeleteConfirmDialog(
-            trackName = track.name,
-            onDismiss = { trackToDelete = null },
+            date = date,
+            onDismiss = { dateToDelete = null },
             onConfirm = {
-                viewModel.deleteTrack(track)
-                trackToDelete = null
+                viewModel.deleteDay(date)
+                dateToDelete = null
             }
         )
     }
@@ -201,17 +185,15 @@ fun OverviewScreen(
 @Composable
 private fun DayCard(
     date: LocalDate,
-    tracks: List<Track>,
+    points: List<LocationPoint>,
     isExpanded: Boolean,
     onExpandClick: () -> Unit,
     onDateClick: (Long) -> Unit,
-    onTrackClick: (Long) -> Unit,
-    onRename: (Track) -> Unit,
-    onDelete: (Track) -> Unit
+    onDelete: () -> Unit
 ) {
-    val totalDuration = tracks.totalDurationMillis()
-    val totalDistance = tracks.sumOf { it.distanceMeters }
-    val trackCount = tracks.size
+    val totalDuration = points.totalDurationMillis()
+    val totalDistance = computeTotalDistance(points)
+    val pointCount = points.size
 
     Card(
         modifier = Modifier
@@ -232,16 +214,21 @@ private fun DayCard(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = "${trackCount} 条轨迹 · ${formatDuration(totalDuration)} · ${formatDistance(totalDistance)}",
+                        text = "${pointCount} 个点 · ${formatDuration(totalDuration)} · ${formatDistance(totalDistance)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = if (isExpanded) "收起" else "展开",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (isExpanded) "收起" else "展开",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Filled.Delete, contentDescription = "删除")
+                    }
+                }
             }
 
             if (!isExpanded) {
@@ -258,15 +245,14 @@ private fun DayCard(
 
             if (isExpanded) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    tracks.forEach { track ->
-                        TrackRow(
-                            track = track,
-                            onClick = { onTrackClick(track.id) },
-                            onRename = { onRename(track) },
-                            onDelete = { onDelete(track) }
-                        )
-                    }
+                val startTime = points.firstOrNull()?.timestamp
+                val endTime = points.lastOrNull()?.timestamp
+                if (startTime != null && endTime != null) {
+                    Text(
+                        text = "${formatTime(startTime)} - ${formatTime(endTime)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -274,78 +260,15 @@ private fun DayCard(
 }
 
 @Composable
-private fun TrackRow(
-    track: Track,
-    onClick: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.name,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = "${formatTime(track.startTime)} · ${formatDuration(track.durationMillis)} · ${formatDistance(track.distanceMeters)} · ${track.pointCount} 点",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Row {
-            IconButton(onClick = onRename) {
-                Icon(Icons.Filled.Edit, contentDescription = "重命名")
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "删除")
-            }
-        }
-    }
-}
-
-@Composable
-private fun RenameDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf(currentName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("重命名轨迹") },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) { Text("确定") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-}
-
-@Composable
 private fun DeleteConfirmDialog(
-    trackName: String,
+    date: LocalDate,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("删除轨迹") },
-        text = { Text("确定要删除 \"$trackName\" 吗？此操作不可恢复。") },
+        title = { Text("删除记录") },
+        text = { Text("确定要删除 ${date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))} 的全部轨迹记录吗？此操作不可恢复。") },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text("删除") }
         },
@@ -468,6 +391,24 @@ private fun formatDuration(millis: Long): String {
     } else {
         String.format("%02d分%02d秒", minutes, seconds % 60)
     }
+}
+
+private fun computeTotalDistance(points: List<LocationPoint>): Double {
+    if (points.size < 2) return 0.0
+    var total = 0.0
+    for (i in 1 until points.size) {
+        val prev = points[i - 1]
+        val curr = points[i]
+        val r = 6371000.0
+        val dLat = Math.toRadians(curr.latitude - prev.latitude)
+        val dLon = Math.toRadians(curr.longitude - prev.longitude)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(prev.latitude)) * kotlin.math.cos(Math.toRadians(curr.latitude)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        total += r * c
+    }
+    return total
 }
 
 private fun formatDistance(meters: Double): String {

@@ -24,11 +24,8 @@ class RangePreviewViewModel(
     private val _endDate = MutableStateFlow(LocalDate.now())
     val endDate: StateFlow<LocalDate> = _endDate.asStateFlow()
 
-    private val _rangeTracks = MutableStateFlow<List<Track>>(emptyList())
-    val rangeTracks: StateFlow<List<Track>> = _rangeTracks.asStateFlow()
-
-    private val _rangePoints = MutableStateFlow<Map<Long, List<LocationPoint>>>(emptyMap())
-    val rangePoints: StateFlow<Map<Long, List<LocationPoint>>> = _rangePoints.asStateFlow()
+    private val _rangePoints = MutableStateFlow<List<LocationPoint>>(emptyList())
+    val rangePoints: StateFlow<List<LocationPoint>> = _rangePoints.asStateFlow()
 
     val settings = settingsDataStore.settings
 
@@ -44,28 +41,11 @@ class RangePreviewViewModel(
             val zone = ZoneId.systemDefault()
             val startMillis = start.atStartOfDay(zone).toInstant().toEpochMilli()
             val endMillis = end.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            val tracks = repository.getTracksBetween(startMillis, endMillis)
-            _rangeTracks.value = tracks
-
-            val pointsMap = mutableMapOf<Long, List<LocationPoint>>()
-            tracks.forEach { track ->
-                pointsMap[track.id] = repository.getPointsForTrackOnce(track.id)
-            }
-            _rangePoints.value = pointsMap
+            _rangePoints.value = repository.getPointsBetween(startMillis, endMillis)
         }
     }
 
-    fun deleteTrack(track: Track) {
-        viewModelScope.launch {
-            repository.deleteTrack(track)
-            loadRange(_startDate.value, _endDate.value)
-        }
-    }
-
-    fun renameTrack(track: Track, newName: String) {
-        viewModelScope.launch {
-            repository.renameTrack(track.id, newName)
-            loadRange(_startDate.value, _endDate.value)
-        }
+    fun refresh() {
+        loadRange(_startDate.value, _endDate.value)
     }
 }
