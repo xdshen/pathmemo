@@ -426,7 +426,15 @@
             });
 
             map.add(markers);
-            if (!selectedPoint) {
+
+            // Always refocus the map on the current points unless the user has
+            // explicitly selected a single point (then we keep that point centered).
+            if (selectedPoint) {
+                map.setCenter([selectedPoint.longitude, selectedPoint.latitude]);
+            } else if (displayPoints.length === 1) {
+                const p = displayPoints[0];
+                map.setCenterAndZoom([p.longitude, p.latitude], 16);
+            } else if (displayPoints.length > 1) {
                 map.setBounds(bounds);
             }
         }
@@ -434,6 +442,9 @@
         async function update(startDate, endDate) {
             const startTime = new Date(startDate + 'T00:00:00').getTime();
             const endTime = new Date(endDate + 'T23:59:59.999').getTime();
+
+            selectedPoint = null;
+            infoWindow && infoWindow.close();
 
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('loading').innerHTML = '<div>正在加载轨迹点...</div>';
