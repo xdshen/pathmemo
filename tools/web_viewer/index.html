@@ -205,6 +205,15 @@
             </div>
 
             <div class="panel">
+                <div class="panel-title">区域查询</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn" id="btn-area-query" onclick="startAreaQuery()">框选区域</button>
+                    <button class="btn btn-secondary" onclick="clearAreaQuery()">清除</button>
+                </div>
+                <div id="area-results" style="margin-top: 10px;"></div>
+            </div>
+
+            <div class="panel">
                 <div class="panel-title">时间段图例</div>
                 <div class="legend" id="legend"></div>
             </div>
@@ -239,6 +248,8 @@
         let currentPoints = [];
         let selectedPoint = null;
         let amapKey = '';
+        let mouseTool = null;
+        let areaQueryOverlay = null;
 
         function getBucket(timestamp) {
             const date = new Date(timestamp);
@@ -280,6 +291,9 @@
                 throw new Error('AMap key not configured');
             }
             await loadScript(`https://webapi.amap.com/maps?v=1.4.15&key=${amapKey}`);
+            await new Promise((resolve, reject) => {
+                AMap.plugin(['AMap.MouseTool'], resolve);
+            });
             map = new AMap.Map('map', {
                 zoom: 13,
                 center: [116.397428, 39.90923]
@@ -288,6 +302,7 @@
                 offset: new AMap.Pixel(0, -8),
                 autoMove: true
             });
+            initMouseTool();
         }
 
         function renderLegend() {
@@ -350,6 +365,85 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function initMouseTool() {
+            if (!AMap.MouseTool) {
+                console.warn('AMap.MouseTool not loaded');
+                return;
+            }
+            mouseTool = new AMap.MouseTool(map);
+            mouseTool.on('draw', function(event) {
+                areaQueryOverlay = event.obj;
+                const bounds = areaQueryOverlay.getBounds();
+                onAreaSelected(bounds);
+            });
+        }
+
+        function startAreaQuery() {
+            if (!mouseTool) {
+                alert('地图工具未加载，请刷新页面重试');
+                return;
+            }
+            clearAreaQuery();
+            mouseTool.rectangle({
+                fillColor: '#2196F3',
+                strokeColor: '#2196F3',
+                fillOpacity: 0.2,
+                strokeOpacity: 0.8,
+                strokeWeight: 2
+            });
+            document.getElementById('btn-area-query').textContent = '正在框选…';
+        }
+
+        async function onAreaSelected(bounds) {
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+            const minLng = sw.getLng();
+            const maxLng = ne.getLng();
+            const minLat = sw.getLat();
+            const maxLat = ne.getLat();
+
+            document.getElementById('area-results').innerHTML = '<div style="color:#666;font-size:12px;">正在查询…</div>';
+            document.getElementById('btn-area-query').textContent = '框选区域';
+
+            try {
+                const res = await fetch(`/api/area-query.json?minLng=${minLng}&maxLng=${maxLng}&minLat=${minLat}&maxLat=${maxLat}`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                renderAreaResults(data.dates || []);
+            } catch (e) {
+                document.getElementById('area-results').innerHTML = `<div style="color:#f44336;font-size:12px;">查询失败: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function renderAreaResults(dates) {
+            const el = document.getElementById('area-results');
+            if (dates.length === 0) {
+                el.innerHTML = '<div style="color:#999;font-size:12px;">该区域没有轨迹记录</div>';
+                return;
+            }
+            el.innerHTML = `
+                <div style="font-size:12px;color:#666;margin-bottom:6px;">共 ${dates.length} 天有记录</div>
+                ${dates.map(d => `
+                    <div class="track-item" onclick="selectDay('${d.date}')">
+                        <div class="track-name">${d.date}</div>
+                        <div class="track-meta">${d.count} 个点 · ${formatDateTime(d.first)} ~ ${formatDateTime(d.last)} · ${formatDuration(d.duration)}</div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function clearAreaQuery() {
+            if (mouseTool) {
+                mouseTool.close(true);
+            }
+            if (areaQueryOverlay) {
+                map.remove(areaQueryOverlay);
+                areaQueryOverlay = null;
+            }
+            document.getElementById('area-results').innerHTML = '';
+            document.getElementById('btn-area-query').textContent = '框选区域';
         }
 
         function getDayInfo(dateStr) {

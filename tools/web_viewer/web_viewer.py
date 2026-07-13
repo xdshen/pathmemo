@@ -195,6 +195,45 @@ def query_all_tracks(db_path):
     return tracks
 
 
+def query_area_summary(db_path, min_lng, max_lng, min_lat, max_lat):
+    """Return dates that have location points inside the given rectangle."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT timestamp FROM location_points
+        WHERE longitude >= ? AND longitude <= ? AND latitude >= ? AND latitude <= ?
+        ORDER BY timestamp ASC
+    """, (min_lng, max_lng, min_lat, max_lat))
+    rows = cur.fetchall()
+    conn.close()
+
+    daily = {}
+    for row in rows:
+        ts = row["timestamp"]
+        d = time.gmtime(ts / 1000)
+        date_str = f"{d.tm_year}-{d.tm_mon:02d}-{d.tm_mday:02d}"
+        if date_str not in daily:
+            daily[date_str] = {"count": 0, "first": ts, "last": ts}
+        daily[date_str]["count"] += 1
+        if ts < daily[date_str]["first"]:
+            daily[date_str]["first"] = ts
+        if ts > daily[date_str]["last"]:
+            daily[date_str]["last"] = ts
+
+    dates = []
+    for date_str in sorted(daily.keys(), reverse=True):
+        day = daily[date_str]
+        dates.append({
+            "date": date_str,
+            "count": day["count"],
+            "first": day["first"],
+            "last": day["last"],
+            "duration": day["last"] - day["first"],
+        })
+    return {"dates": dates}
+
+
 class Handler(SimpleHTTPRequestHandler):
     """Serve static files and API endpoints."""
 
@@ -240,6 +279,20 @@ class Handler(SimpleHTTPRequestHandler):
                 "count": len(points),
                 "points": points
             })
+            return
+        if self.path.startswith("/api/area-query.json"):
+            from urllib.parse import parse_qs, urlparse
+            qs = parse_qs(urlparse(self.path).query)
+            try:
+                min_lng = float(qs.get("minLng", [None])[0])
+                max_lng = float(qs.get("maxLng", [None])[0])
+                min_lat = float(qs.get("minLat", [None])[0])
+                max_lat = float(qs.get("maxLat", [None])[0])
+            except (ValueError, TypeError):
+                self.send_error(400, "Invalid minLng/maxLng/minLat/maxLat parameters")
+                return
+            result = query_area_summary(self.db_path, min_lng, max_lng, min_lat, max_lat)
+            self._send_json(result)
             return
         if self.path == "/":
             self.path = "/index.html"
