@@ -129,6 +129,28 @@ def export_data(db_path):
     }
 
 
+def export_data_remote():
+    """Read tracks and total point count by querying the phone directly."""
+    tracks_sql = """
+        SELECT id, name, startTime, endTime, distanceMeters, pointCount
+        FROM tracks
+        ORDER BY startTime ASC
+    """
+    tracks_output = run_sql_on_device(tracks_sql)
+    tracks = json.loads(tracks_output) if tracks_output else []
+
+    count_sql = "SELECT COUNT(*) AS count FROM location_points"
+    count_output = run_sql_on_device(count_sql)
+    point_count = json.loads(count_output)[0]["count"] if count_output else 0
+
+    return {
+        "exportedAt": int(time.time() * 1000),
+        "trackCount": len(tracks),
+        "pointCount": point_count,
+        "tracks": tracks,
+    }
+
+
 def query_points(db_path, start, end):
     """Query location points within a timestamp range."""
     conn = sqlite3.connect(db_path)
@@ -143,6 +165,20 @@ def query_points(db_path, start, end):
     points = [dict(row) for row in cur.fetchall()]
     conn.close()
     return points
+
+
+def query_points_remote(start, end):
+    """Query location points within a timestamp range by querying the phone directly."""
+    sql = """
+        SELECT id, trackId, latitude, longitude, altitude, accuracy, speed, timestamp
+        FROM location_points
+        WHERE timestamp >= {} AND timestamp <= {}
+        ORDER BY timestamp ASC
+    """.format(start, end)
+    output = run_sql_on_device(sql)
+    if not output:
+        return []
+    return json.loads(output)
 
 
 def query_daily_summary_remote():
@@ -326,10 +362,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/data.json":
-            if self.data is None:
-                self.send_error(503, "Database not available. Please reconnect the phone.")
-                return
-            self._send_json(self.data)
+            try:
+                data = export_data_remote()
+            except RuntimeError:
+                if self.data is None:
+                    self.send_error(503, "Database not available. Please reconnect the phone.")
+                    return
+                data = self.data
+            self._send_json(data)
             return
         if self.path == "/api/config.json":
             self._send_json(self.config)
@@ -345,9 +385,6 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json(daily)
             return
         if self.path.startswith("/api/points.json"):
-            if self.db_path is None:
-                self.send_error(503, "Database not available. Please reconnect the phone.")
-                return
             from urllib.parse import parse_qs, urlparse
             qs = parse_qs(urlparse(self.path).query)
             try:
@@ -356,7 +393,13 @@ class Handler(SimpleHTTPRequestHandler):
             except (ValueError, TypeError):
                 self.send_error(400, "Invalid start/end parameters")
                 return
-            points = query_points(self.db_path, start, end)
+            try:
+                points = query_points_remote(start, end)
+            except RuntimeError:
+                if self.db_path is None:
+                    self.send_error(503, "Database not available. Please reconnect the phone.")
+                    return
+                points = query_points(self.db_path, start, end)
             self._send_json({
                 "start": start,
                 "end": end,
@@ -401,19 +444,13 @@ def main():
             sys.exit(1)
         print(f"Using local database: {db_path}")
     else:
-        try:
-            db_path = pull_database()
-        except RuntimeError as e:
-            print(f"Warning: could not pull database: {e}")
-            print("Area query and daily summary will still work directly on the device.")
-            db_path = None
+        db_path = None
+        print("Running in remote-query mode: data is read directly from the device via sqlite3.")
 
     data = None
     if db_path is not None:
         data = export_data(db_path)
-        print(f"Loaded {data['trackCount']} tracks, {data['pointCount']} points.")
-    else:
-        print("No local database; trajectory-by-range queries are disabled.")
+        print(f"Loaded {data['trackCount']} tracks, {data['pointCount']} points from local database.")
 
     amap_key = load_amap_key()
     config = {"amapKey": amap_key}
