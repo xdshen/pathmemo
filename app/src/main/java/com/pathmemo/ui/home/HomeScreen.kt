@@ -127,6 +127,14 @@ fun HomeScreen(
                         StatItem(label = "点数", value = state.pointCount.toString())
                         StatItem(label = "时长", value = formatDuration(state.elapsedMillis))
                     }
+                    state.lastCellInfo?.let { cell ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = formatCellInfo(cell),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -221,6 +229,19 @@ private fun formatDuration(millis: Long): String {
     val minutes = (seconds % 3600) / 60
     val secs = seconds % 60
     return String.format("%02d:%02d:%02d", hours, minutes, secs)
+}
+
+private fun formatCellInfo(cell: com.pathmemo.location.CellInfoSnapshot): String {
+    val parts = mutableListOf<String>()
+    parts += cell.networkType
+    cell.operatorName?.let { parts += it }
+    cell.band?.let { parts += it }
+    cell.pci?.let { parts += "PCI $it" }
+    cell.ci?.let { parts += "CI $it" }
+    cell.rsrp?.let { parts += "RSRP $it dBm" }
+    cell.rsrq?.let { parts += "RSRQ $it dB" }
+    cell.sinr?.let { parts += "SINR $it dB" }
+    return parts.joinToString(" · ")
 }
 
 @OptIn(ExperimentalPermissionsApi::class)

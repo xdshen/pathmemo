@@ -29,5 +29,18 @@ data class LocationPoint(
     val altitude: Double = 0.0,
     val accuracy: Float = 0f,
     val speed: Float = 0f,
-    val timestamp: Long
+    val timestamp: Long,
+    // Serving cell (base station) snapshot taken at record time; null when unavailable.
+    val cellNetworkType: String? = null,
+    val cellOperator: String? = null,
+    val cellMcc: String? = null,
+    val cellMnc: String? = null,
+    val cellTac: Int? = null,
+    val cellPci: Int? = null,
+    val cellCi: Long? = null,
+    val cellArfcn: Int? = null,
+    val cellBand: String? = null,
+    val cellRsrp: Int? = null,
+    val cellRsrq: Int? = null,
+    val cellSinr: Int? = null
 )

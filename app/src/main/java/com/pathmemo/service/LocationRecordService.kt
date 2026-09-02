@@ -16,6 +16,8 @@ import com.pathmemo.data.model.LocationPoint
 import com.pathmemo.data.model.Track
 import com.pathmemo.data.repository.TrackRepository
 import com.pathmemo.data.store.SettingsDataStore
+import com.pathmemo.location.CellInfoProvider
+import com.pathmemo.location.CellInfoSnapshot
 import com.pathmemo.location.LocationRecorder
 import com.pathmemo.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +36,7 @@ class LocationRecordService : Service() {
 
     private val repository: TrackRepository by inject()
     private val locationRecorder: LocationRecorder by inject()
+    private val cellInfoProvider: CellInfoProvider by inject()
     private val settingsDataStore: SettingsDataStore by inject()
     private val binderManager: BinderManager by inject()
 
@@ -127,6 +130,7 @@ class LocationRecordService : Service() {
                 )
             } else 0.0
 
+            val cell = cellInfoProvider.snapshot()
             val point = LocationPoint(
                 trackId = state.currentTrackId,
                 latitude = location.latitude,
@@ -134,7 +138,19 @@ class LocationRecordService : Service() {
                 altitude = location.altitude,
                 accuracy = location.accuracy,
                 speed = location.speed,
-                timestamp = location.time
+                timestamp = location.time,
+                cellNetworkType = cell?.networkType,
+                cellOperator = cell?.operatorName,
+                cellMcc = cell?.mcc,
+                cellMnc = cell?.mnc,
+                cellTac = cell?.tac,
+                cellPci = cell?.pci,
+                cellCi = cell?.ci,
+                cellArfcn = cell?.arfcn,
+                cellBand = cell?.band,
+                cellRsrp = cell?.rsrp,
+                cellRsrq = cell?.rsrq,
+                cellSinr = cell?.sinr
             )
             repository.insertPoint(point)
 
@@ -142,7 +158,8 @@ class LocationRecordService : Service() {
                 current.copy(
                     distanceMeters = current.distanceMeters + addedDistance,
                     pointCount = current.pointCount + 1,
-                    lastLocation = location
+                    lastLocation = location,
+                    lastCellInfo = cell ?: current.lastCellInfo
                 )
             }
 
@@ -270,7 +287,8 @@ class LocationRecordService : Service() {
         val startTime: Long = 0L,
         val distanceMeters: Double = 0.0,
         val pointCount: Int = 0,
-        val lastLocation: com.amap.api.location.AMapLocation? = null
+        val lastLocation: com.amap.api.location.AMapLocation? = null,
+        val lastCellInfo: CellInfoSnapshot? = null
     ) {
         val elapsedMillis: Long
             get() = if (isRecording) System.currentTimeMillis() - startTime else 0L

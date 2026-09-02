@@ -3,9 +3,11 @@ package com.pathmemo.di
 import android.app.Application
 import androidx.room.Room
 import com.pathmemo.data.db.MIGRATION_1_2
+import com.pathmemo.data.db.MIGRATION_2_3
 import com.pathmemo.data.db.PathMemoDatabase
 import com.pathmemo.data.repository.TrackRepository
 import com.pathmemo.data.store.SettingsDataStore
+import com.pathmemo.location.CellInfoProvider
 import com.pathmemo.location.LocationRecorder
 import com.pathmemo.service.LocationRecordService
 import com.pathmemo.viewmodel.DayPreviewViewModel
@@ -25,7 +27,7 @@ val appModule = module {
             androidContext(),
             PathMemoDatabase::class.java,
             "pathmemo_database"
-        ).addMigrations(MIGRATION_1_2)
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
     single { get<PathMemoDatabase>().trackDao() }
@@ -34,6 +36,7 @@ val appModule = module {
 
     single { SettingsDataStore(androidContext()) }
     single { LocationRecorder(androidContext()) }
+    single { CellInfoProvider(androidContext()) }
 
     single { LocationRecordService.BinderManager() }
 

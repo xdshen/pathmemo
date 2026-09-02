@@ -9,7 +9,7 @@ import com.pathmemo.data.model.Track
 
 @Database(
     entities = [Track::class, LocationPoint::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class PathMemoDatabase : RoomDatabase() {
@@ -23,5 +23,22 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
             "CREATE INDEX IF NOT EXISTS index_location_points_latitude_longitude " +
             "ON location_points(latitude, longitude)"
         )
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellNetworkType TEXT")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellOperator TEXT")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellMcc TEXT")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellMnc TEXT")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellTac INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellPci INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellCi INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellArfcn INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellBand TEXT")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellRsrp INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellRsrq INTEGER")
+        db.execSQL("ALTER TABLE location_points ADD COLUMN cellSinr INTEGER")
     }
 }

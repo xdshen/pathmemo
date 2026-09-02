@@ -12,6 +12,7 @@
 - **按日期查看**：轨迹以自然日为单位聚合，跨天记录会自动归属到对应日期；也支持选择连续多日查看完整轨迹。
 - **地图可视化**：实时显示当前位置与已记录轨迹；历史轨迹详情页绘制完整路径。
 - **时间轴回溯**：历史轨迹按日期倒序展示，详情页支持滑块定位与多倍速回放。
+- **基站信息记录**：记录位置的同时保存当前 4G/5G 服务小区信息（网络类型、运营商、MCC/MNC、TAC、PCI、CI、ARFCN、频段、SS RSRP/RSRQ/SINR），首页实时显示当前小区与信号强度，数据仅保存在本地。
 - **本地存储**：使用 Room 数据库保存轨迹与位置点，数据不上传。
 - **隐私合规**：首次运行申请位置权限，提供隐私说明与电池优化白名单引导。
 
@@ -56,7 +57,8 @@ app/src/main/java/com/pathmemo/
 │   ├── repository/             # TrackRepository
 │   └── store/                  # DataStore 设置持久化
 ├── location/
-│   └── LocationRecorder.kt     # AMap 定位封装与位置过滤
+│   ├── LocationRecorder.kt     # AMap 定位封装与位置过滤
+│   └── CellInfoProvider.kt     # 4G/5G 服务小区信息采集
 ├── service/
 │   └── LocationRecordService.kt# 前台轨迹记录服务
 ├── ui/                         # Compose 页面与地图组件
