@@ -18,6 +18,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,9 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import kotlin.math.min
 
 @Composable
 fun CalendarHeatmap(
@@ -46,6 +51,15 @@ fun CalendarHeatmap(
 
     val maxDuration = dailyDurations.values.maxOrNull()?.toFloat() ?: 0f
 
+    val scrollState = rememberScrollState()
+    var hasScrolledToEnd by remember { mutableStateOf(false) }
+    LaunchedEffect(scrollState.maxValue) {
+        if (!hasScrolledToEnd && scrollState.maxValue > 0) {
+            scrollState.scrollTo(scrollState.maxValue)
+            hasScrolledToEnd = true
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -57,11 +71,12 @@ fun CalendarHeatmap(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
+        val seenMonths = mutableSetOf<YearMonth>()
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier.horizontalScroll(scrollState),
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            weeks.forEachIndexed { weekIndex, weekDays ->
+            weeks.forEach { weekDays ->
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     weekDays.forEach { date ->
                         val duration = dailyDurations[date] ?: 0L
@@ -73,17 +88,16 @@ fun CalendarHeatmap(
                         )
                     }
                 }
-                // Month label on first week of month
-                if (weekDays.any { it.dayOfMonth <= 7 }) {
-                    val monthDate = weekDays.first { it.dayOfMonth <= 7 }
-                    if (monthDate.dayOfWeek == DayOfWeek.MONDAY || weekDays.indexOf(monthDate) == 0) {
-                        Box(modifier = Modifier.padding(start = 2.dp, top = 0.dp)) {
-                            Text(
-                                text = monthDate.format(DateTimeFormatter.ofPattern("M月")),
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                // Month label on the first week that contains a day of a new month
+                val newMonthDay = weekDays.firstOrNull { YearMonth.from(it) !in seenMonths }
+                if (newMonthDay != null) {
+                    seenMonths.add(YearMonth.from(newMonthDay))
+                    Box(modifier = Modifier.padding(start = 2.dp, top = 0.dp)) {
+                        Text(
+                            text = newMonthDay.format(DateTimeFormatter.ofPattern("M月")),
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
