@@ -77,6 +77,18 @@ fun CalendarHeatmap(
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             weeks.forEach { weekDays ->
+                // Month label before the first week that contains a day of a new month
+                val newMonthDay = weekDays.firstOrNull { YearMonth.from(it) !in seenMonths }
+                if (newMonthDay != null) {
+                    seenMonths.add(YearMonth.from(newMonthDay))
+                    Box(modifier = Modifier.padding(end = 2.dp)) {
+                        Text(
+                            text = newMonthDay.format(DateTimeFormatter.ofPattern("M月")),
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     weekDays.forEach { date ->
                         val duration = dailyDurations[date] ?: 0L
@@ -85,18 +97,6 @@ fun CalendarHeatmap(
                             date = date,
                             intensity = intensity,
                             onClick = { onDateClick(date) }
-                        )
-                    }
-                }
-                // Month label on the first week that contains a day of a new month
-                val newMonthDay = weekDays.firstOrNull { YearMonth.from(it) !in seenMonths }
-                if (newMonthDay != null) {
-                    seenMonths.add(YearMonth.from(newMonthDay))
-                    Box(modifier = Modifier.padding(start = 2.dp, top = 0.dp)) {
-                        Text(
-                            text = newMonthDay.format(DateTimeFormatter.ofPattern("M月")),
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
