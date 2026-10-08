@@ -40,7 +40,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +61,7 @@ import com.pathmemo.service.LocationRecordService
 import com.pathmemo.ui.map.AMapView
 import com.pathmemo.ui.theme.TrackBlue
 import com.pathmemo.viewmodel.HomeViewModel
+import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +73,17 @@ fun HomeScreen(
 ) {
     val state by viewModel.recordingState.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle(initialValue = com.pathmemo.data.model.AppSettings())
+
+    // Tick every second while recording so the elapsed-time display keeps
+    // refreshing even when no new location point arrives (device stationary).
+    var tickMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(state.isRecording) {
+        while (state.isRecording) {
+            delay(1000)
+            tickMillis = System.currentTimeMillis()
+        }
+    }
+    val elapsedMillis = if (state.isRecording) tickMillis - state.startTime else 0L
 
     Scaffold(
         topBar = {
@@ -125,7 +141,7 @@ fun HomeScreen(
                     ) {
                         StatItem(label = "距离", value = formatDistance(state.distanceMeters))
                         StatItem(label = "点数", value = state.pointCount.toString())
-                        StatItem(label = "时长", value = formatDuration(state.elapsedMillis))
+                        StatItem(label = "时长", value = formatDuration(elapsedMillis))
                     }
                     state.lastCellInfo?.let { cell ->
                         Spacer(modifier = Modifier.height(8.dp))

@@ -13,7 +13,6 @@ import com.pathmemo.PathMemoApp
 import com.pathmemo.R
 import com.pathmemo.data.model.AppSettings
 import com.pathmemo.data.model.LocationPoint
-import com.pathmemo.data.model.Track
 import com.pathmemo.data.repository.TrackRepository
 import com.pathmemo.data.store.SettingsDataStore
 import com.pathmemo.location.CellInfoProvider
@@ -86,26 +85,24 @@ class LocationRecordService : Service() {
         serviceScope.launch {
             val activeTrack = repository.getActiveTrack()
             if (activeTrack != null) {
-                beginRecording(activeTrack.id, activeTrack)
+                beginRecording(activeTrack.id)
             } else {
                 val today = LocalDate.now(ZoneId.systemDefault())
                 val trackId = repository.getOrCreateTrackForDate(today)
-                val track = repository.getTrackById(trackId)
-                beginRecording(trackId, track)
+                beginRecording(trackId)
             }
         }
     }
 
-    private suspend fun beginRecording(trackId: Long, track: Track?) {
-        val now = System.currentTimeMillis()
+    private fun beginRecording(trackId: Long) {
         _state.update {
             it.copy(
                 isRecording = true,
                 isPaused = false,
                 currentTrackId = trackId,
-                startTime = track?.startTime ?: now,
-                distanceMeters = track?.distanceMeters ?: 0.0,
-                pointCount = track?.pointCount ?: 0
+                startTime = System.currentTimeMillis(),
+                distanceMeters = 0.0,
+                pointCount = 0
             )
         }
 
@@ -114,6 +111,10 @@ class LocationRecordService : Service() {
     }
 
     private suspend fun collectLocations() {
+        // Session-local last recorded position: distance only accumulates
+        // between points recorded within this recording session.
+        var lastSessionLat = Double.NaN
+        var lastSessionLng = Double.NaN
         locationRecorder.start(
             intervalMillis = currentSettings.locationInterval.millis,
             minDistanceMeters = currentSettings.minDistance.meters,
@@ -122,13 +123,14 @@ class LocationRecordService : Service() {
             val state = _state.value
             if (state.isPaused || state.currentTrackId == null) return@collect
 
-            val lastPoint = repository.getLastPoint(state.currentTrackId)
-            val addedDistance = if (lastPoint != null) {
+            val addedDistance = if (!lastSessionLat.isNaN()) {
                 LocationRecorder.computeDistance(
-                    lastPoint.latitude, lastPoint.longitude,
+                    lastSessionLat, lastSessionLng,
                     location.latitude, location.longitude
                 )
             } else 0.0
+            lastSessionLat = location.latitude
+            lastSessionLng = location.longitude
 
             val cell = cellInfoProvider.snapshot()
             val point = LocationPoint(
@@ -208,7 +210,7 @@ class LocationRecordService : Service() {
         serviceScope.launch {
             val track = repository.getActiveTrack() ?: return@launch
             startForegroundService()
-            beginRecording(track.id, track)
+            beginRecording(track.id)
         }
     }
 
@@ -289,10 +291,7 @@ class LocationRecordService : Service() {
         val pointCount: Int = 0,
         val lastLocation: com.amap.api.location.AMapLocation? = null,
         val lastCellInfo: CellInfoSnapshot? = null
-    ) {
-        val elapsedMillis: Long
-            get() = if (isRecording) System.currentTimeMillis() - startTime else 0L
-    }
+    )
 
     companion object {
         const val ACTION_START = "com.pathmemo.action.START_RECORDING"

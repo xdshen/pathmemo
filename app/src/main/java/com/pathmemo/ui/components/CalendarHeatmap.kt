@@ -46,8 +46,23 @@ fun CalendarHeatmap(
     val startDate = today.minusWeeks(weeksToShow.toLong()).with(DayOfWeek.MONDAY)
     val totalDays = ChronoUnit.DAYS.between(startDate, today).toInt() + 1
 
-    val days = (0 until totalDays).map { startDate.plusDays(it.toLong()) }
-    val weeks = days.chunked(7)
+    // A new column starts on Monday and on the 1st of each month, so squares
+    // following a month label always belong to that month. Missing weekday
+    // slots at the top of a column are padded with transparent placeholders
+    // to keep weekday alignment.
+    val weeks = mutableListOf<List<LocalDate?>>()
+    var currentWeek = mutableListOf<LocalDate?>()
+    var date = startDate
+    repeat(totalDays) {
+        if (currentWeek.isEmpty() || date.dayOfWeek == DayOfWeek.MONDAY || date.dayOfMonth == 1) {
+            if (currentWeek.isNotEmpty()) weeks += currentWeek
+            currentWeek = mutableListOf()
+            repeat(date.dayOfWeek.value - DayOfWeek.MONDAY.value) { currentWeek.add(null) }
+        }
+        currentWeek.add(date)
+        date = date.plusDays(1)
+    }
+    if (currentWeek.isNotEmpty()) weeks += currentWeek
 
     val maxDuration = dailyDurations.values.maxOrNull()?.toFloat() ?: 0f
 
@@ -77,8 +92,8 @@ fun CalendarHeatmap(
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             weeks.forEach { weekDays ->
-                // Month label before the first week that contains a day of a new month
-                val newMonthDay = weekDays.firstOrNull { YearMonth.from(it) !in seenMonths }
+                // Month label before the first column that contains a day of a new month
+                val newMonthDay = weekDays.filterNotNull().firstOrNull { YearMonth.from(it) !in seenMonths }
                 if (newMonthDay != null) {
                     seenMonths.add(YearMonth.from(newMonthDay))
                     Box(modifier = Modifier.padding(end = 2.dp)) {
@@ -91,13 +106,17 @@ fun CalendarHeatmap(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     weekDays.forEach { date ->
-                        val duration = dailyDurations[date] ?: 0L
-                        val intensity = if (maxDuration > 0) duration / maxDuration else 0f
-                        DayCell(
-                            date = date,
-                            intensity = intensity,
-                            onClick = { onDateClick(date) }
-                        )
+                        if (date == null) {
+                            Box(modifier = Modifier.size(14.dp))
+                        } else {
+                            val duration = dailyDurations[date] ?: 0L
+                            val intensity = if (maxDuration > 0) duration / maxDuration else 0f
+                            DayCell(
+                                date = date,
+                                intensity = intensity,
+                                onClick = { onDateClick(date) }
+                            )
+                        }
                     }
                 }
             }
