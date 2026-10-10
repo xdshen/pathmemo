@@ -2,6 +2,10 @@
 
 一款 Android 个人轨迹记录与回溯 APP，支持静默后台记录、高德地图可视化、时间轴回放，并提供 Web Viewer 可在电脑浏览器上查看与管理轨迹数据。
 
+## 安装包下载
+
+- [PathMemo-1.0-debug.apk](releases/PathMemo-1.0-debug.apk)：调试版安装包（约 51 MB），可直接安装到手机使用；Web Viewer 读取数据依赖调试版。
+
 ## 功能特性
 
 ### APP 端功能
