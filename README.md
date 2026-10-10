@@ -4,7 +4,7 @@
 
 ## 安装包下载
 
-- [PathMemo-1.0-debug.apk](releases/PathMemo-1.0-debug.apk)：调试版安装包（约 51 MB），可直接安装到手机使用；Web Viewer 读取数据依赖调试版。
+- 前往 [GitHub Releases](https://github.com/xdshen/pathmemo/releases/latest) 下载最新安装包（调试版 APK，可直接安装到手机使用；Web Viewer 读取数据依赖调试版）。
 
 ## 功能特性
 
